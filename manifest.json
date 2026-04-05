@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "AI Tab Organizer",
+  "version": "1.0.0",
+  "description": "Use AI to sort tabs in the current window and group related work together.",
+  "permissions": [
+    "bookmarks",
+    "search",
+    "scripting",
+    "storage",
+    "tabGroups",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "options_page": "options.html",
+  "commands": {
+    "organize-tabs-ai": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+J",
+        "mac": "Command+Shift+J"
+      },
+      "description": "Organize tabs in the current window with AI"
+    },
+    "search-tabs": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+K",
+        "mac": "Command+Shift+K"
+      },
+      "description": "Search tabs and jump to a matching page"
+    }
+  }
+}
