@@ -11,6 +11,8 @@ const detailSummary = document.getElementById("detail-summary");
 const groupList = document.getElementById("group-list");
 
 const settingsBackButton = document.getElementById("settings-back-button");
+const modeToggle = document.getElementById("mode-toggle");
+const swatches = document.querySelectorAll(".theme-swatch");
 const endpointInput = document.getElementById("endpoint-input");
 const apiKeyInput = document.getElementById("api-key-input");
 const modelInput = document.getElementById("model-input");
@@ -46,6 +48,34 @@ settingsButton.addEventListener("click", async () => {
   showPage("settings");
   await loadSettingsIntoForm();
 });
+
+swatches.forEach((swatch) => {
+  swatch.addEventListener("click", async () => {
+    const color = swatch.dataset.color;
+    await chrome.storage.local.set({ themeColor: color });
+    document.documentElement.dataset.themeColor = color;
+    updateSwatchSelection(color);
+  });
+});
+
+modeToggle.addEventListener("click", async () => {
+  const current = document.documentElement.dataset.themeMode || "light";
+  const next = current === "light" ? "dark" : "light";
+  await chrome.storage.local.set({ themeMode: next });
+  document.documentElement.dataset.themeMode = next;
+  updateModeToggle(next);
+});
+
+function updateSwatchSelection(color) {
+  swatches.forEach((s) => {
+    s.setAttribute("aria-pressed", s.dataset.color === color ? "true" : "false");
+  });
+}
+
+function updateModeToggle(mode) {
+  modeToggle.querySelector(".mode-toggle-icon").textContent = mode === "dark" ? "🌙" : "☀️";
+  modeToggle.querySelector(".mode-toggle-label").textContent = mode === "dark" ? "深色" : "浅色";
+}
 
 settingsBackButton.addEventListener("click", () => {
   showPage("home");
@@ -202,7 +232,9 @@ async function loadSettingsIntoForm() {
     "aiApiKey",
     "aiModel",
     "aiPreference",
-    "experimentalTitleRewriteEnabled"
+    "experimentalTitleRewriteEnabled",
+    "themeColor",
+    "themeMode"
   ]);
 
   endpointInput.value = normalizeEndpoint(stored.aiEndpoint || "https://api.openai.com/v1/chat/completions");
@@ -211,6 +243,8 @@ async function loadSettingsIntoForm() {
   preferenceInput.value = stored.aiPreference || "";
   titleRewriteInput.checked = Boolean(stored.experimentalTitleRewriteEnabled);
   settingsStatusText.textContent = "";
+  updateSwatchSelection(stored.themeColor || "neutral");
+  updateModeToggle(stored.themeMode || "light");
 }
 
 async function saveSettings() {

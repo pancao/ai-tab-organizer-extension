@@ -6,6 +6,12 @@ const TITLE_REWRITE_MAX_LENGTH = 24;
 
 let organizationState = createIdleState();
 
+chrome.runtime.onInstalled.addListener((details) => {
+  if (details.reason === "install") {
+    chrome.tabs.create({ url: chrome.runtime.getURL("options.html") });
+  }
+});
+
 chrome.commands.onCommand.addListener(async (command) => {
   if (command === "search-tabs") {
     try {
@@ -318,9 +324,11 @@ async function requestAIOrganizationPlan(tabs, settings) {
 }
 
 async function requestBatchSelection(query, tabs, settings) {
+  const now = Date.now();
+
   return await requestJSONFromAI(
     settings,
-    "You select browser tabs from a list based on a natural-language request. Return strict JSON only. Pick only strongly relevant tabs. Output selectedTabIds as an array of numbers, a short rationale string, and a suggestedLabel string.",
+    "You select browser tabs from a list based on a natural-language request. Return strict JSON only. Pick only strongly relevant tabs. Output selectedTabIds as an array of numbers, a short rationale string, and a suggestedLabel string. Each tab may include idleMin (integer: minutes since last accessed) — use it for time-based queries like 'not opened in 30 minutes' or 'inactive for an hour'. Tabs without idleMin have unknown access time.",
     JSON.stringify(
       {
         task: "Select tabs that match the user's natural-language request.",
@@ -330,12 +338,20 @@ async function requestBatchSelection(query, tabs, settings) {
           rationale: "string",
           suggestedLabel: "string"
         },
-        tabs: tabs.map((tab) => ({
-          id: tab.id,
-          title: tab.title || "Untitled",
-          url: tab.url || "",
-          domain: safeGetDomain(tab.url)
-        }))
+        tabs: tabs.map((tab) => {
+          const idleMin =
+            tab.lastAccessed && tab.lastAccessed > 0
+              ? Math.floor((now - tab.lastAccessed) / 60000)
+              : null;
+          const entry = {
+            id: tab.id,
+            title: tab.title || "Untitled",
+            url: tab.url || "",
+            domain: safeGetDomain(tab.url)
+          };
+          if (idleMin !== null) entry.idleMin = idleMin;
+          return entry;
+        })
       },
       null,
       2
@@ -565,7 +581,8 @@ async function getSearchableTabs() {
       windowId: tab.windowId,
       title: tab.title || "Untitled",
       url: tab.url || "",
-      favIconUrl: tab.favIconUrl || ""
+      favIconUrl: tab.favIconUrl || "",
+      lastAccessed: tab.lastAccessed || null
     }));
 }
 

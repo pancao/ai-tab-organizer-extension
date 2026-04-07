@@ -10,6 +10,21 @@
     <main class="settings-shell">
       <section class="surface settings-panel compact-surface">
         <div class="section-title">设置</div>
+
+        <div class="theme-section">
+          <div class="theme-colors">
+            <button class="theme-swatch" data-color="neutral" title="默认"></button>
+            <button class="theme-swatch" data-color="blue" title="蓝色"></button>
+            <button class="theme-swatch" data-color="green" title="绿色"></button>
+            <button class="theme-swatch" data-color="purple" title="紫色"></button>
+            <button class="theme-swatch" data-color="orange" title="橙色"></button>
+          </div>
+          <button id="mode-toggle" class="mode-toggle">
+            <span class="mode-toggle-icon">☀️</span>
+            <span class="mode-toggle-label">浅色</span>
+          </button>
+        </div>
+
         <div class="settings-stack">
           <label class="field">
             <span>接口地址</span>
@@ -50,6 +65,7 @@
         </div>
       </section>
     </main>
+    <script src="theme.js"></script>
     <script src="options.js"></script>
   </body>
   </html>

@@ -2,10 +2,34 @@ const OVERLAY_ID = "__ai_tab_organizer_search_overlay__";
 const ACTIONS = ["open", "close", "bookmark_close"];
 const NATURAL_BATCH_ACTIONS = [
   { action: "bookmark_close", label: "关闭并加入收藏" },
-  { action: "delete", label: "关闭Tab" },
+  { action: "delete", label: "关闭搜索到的Tab" },
   { action: "group", label: "新建分组" }
 ];
 const UI_FONT_FAMILY = "sans-serif";
+
+const THEME_COLORS_CONFIG = {
+  neutral: { accent: "#1f1f1c", light: { page: "#f6f6f4", surface: "rgba(255,255,255,0.72)", inputBg: "rgba(255,255,255,0.82)", border: "rgba(15,23,42,0.12)", text: "#0f172a", muted: "rgba(15,23,42,0.56)", subtleBg: "rgba(15,23,42,0.07)", hoverBg: "rgba(15,23,42,0.07)", selectedBg: "rgba(15,23,42,0.13)", overlayBg: "rgba(15,23,42,0.16)", commandBg: "rgba(37,99,235,0.08)", commandText: "#1d4ed8", commandMuted: "rgba(29,78,216,0.78)", urlShadow: "rgba(37,99,235,0.10)" }, dark: { page: "#1a1a1a", surface: "rgba(30,30,30,0.88)", inputBg: "rgba(40,40,40,0.82)", border: "rgba(255,255,255,0.12)", text: "#e5e5e5", muted: "rgba(255,255,255,0.50)", subtleBg: "rgba(255,255,255,0.07)", hoverBg: "rgba(255,255,255,0.07)", selectedBg: "rgba(255,255,255,0.18)", overlayBg: "rgba(0,0,0,0.50)", commandBg: "rgba(96,165,250,0.10)", commandText: "#93bbfd", commandMuted: "rgba(147,187,253,0.78)", urlShadow: "rgba(96,165,250,0.10)" } },
+  blue: { accent: "#2563eb", light: { page: "#f0f4ff", surface: "rgba(240,245,255,0.82)", inputBg: "rgba(255,255,255,0.82)", border: "rgba(37,99,235,0.14)", text: "#0f172a", muted: "rgba(37,99,235,0.50)", subtleBg: "rgba(37,99,235,0.07)", hoverBg: "rgba(37,99,235,0.07)", selectedBg: "rgba(37,99,235,0.20)", overlayBg: "rgba(16,24,40,0.18)", commandBg: "rgba(37,99,235,0.10)", commandText: "#1d4ed8", commandMuted: "rgba(29,78,216,0.78)", urlShadow: "rgba(37,99,235,0.12)" }, dark: { page: "#101828", surface: "rgba(26,37,64,0.88)", inputBg: "rgba(30,42,72,0.82)", border: "rgba(96,165,250,0.16)", text: "#e5e5e5", muted: "rgba(147,187,253,0.55)", subtleBg: "rgba(96,165,250,0.08)", hoverBg: "rgba(96,165,250,0.08)", selectedBg: "rgba(96,165,250,0.26)", overlayBg: "rgba(0,0,0,0.50)", commandBg: "rgba(96,165,250,0.12)", commandText: "#93bbfd", commandMuted: "rgba(147,187,253,0.78)", urlShadow: "rgba(96,165,250,0.10)" } },
+  green: { accent: "#16a34a", light: { page: "#eefbf2", surface: "rgba(238,251,242,0.82)", inputBg: "rgba(255,255,255,0.82)", border: "rgba(22,163,74,0.14)", text: "#0f172a", muted: "rgba(22,163,74,0.52)", subtleBg: "rgba(22,163,74,0.07)", hoverBg: "rgba(22,163,74,0.07)", selectedBg: "rgba(22,163,74,0.20)", overlayBg: "rgba(14,31,20,0.18)", commandBg: "rgba(22,163,74,0.10)", commandText: "#15803d", commandMuted: "rgba(21,128,61,0.78)", urlShadow: "rgba(22,163,74,0.12)" }, dark: { page: "#0e1f14", surface: "rgba(21,42,28,0.88)", inputBg: "rgba(26,48,34,0.82)", border: "rgba(74,222,128,0.14)", text: "#e5e5e5", muted: "rgba(134,239,172,0.55)", subtleBg: "rgba(74,222,128,0.08)", hoverBg: "rgba(74,222,128,0.08)", selectedBg: "rgba(74,222,128,0.24)", overlayBg: "rgba(0,0,0,0.50)", commandBg: "rgba(74,222,128,0.10)", commandText: "#86efac", commandMuted: "rgba(134,239,172,0.78)", urlShadow: "rgba(74,222,128,0.10)" } },
+  purple: { accent: "#7c3aed", light: { page: "#f5f0ff", surface: "rgba(245,240,255,0.82)", inputBg: "rgba(255,255,255,0.82)", border: "rgba(124,58,237,0.14)", text: "#0f172a", muted: "rgba(124,58,237,0.50)", subtleBg: "rgba(124,58,237,0.07)", hoverBg: "rgba(124,58,237,0.07)", selectedBg: "rgba(124,58,237,0.20)", overlayBg: "rgba(24,16,42,0.18)", commandBg: "rgba(124,58,237,0.10)", commandText: "#6d28d9", commandMuted: "rgba(109,40,217,0.78)", urlShadow: "rgba(124,58,237,0.12)" }, dark: { page: "#18102a", surface: "rgba(34,24,64,0.88)", inputBg: "rgba(40,30,72,0.82)", border: "rgba(167,139,250,0.16)", text: "#e5e5e5", muted: "rgba(196,181,253,0.55)", subtleBg: "rgba(167,139,250,0.08)", hoverBg: "rgba(167,139,250,0.08)", selectedBg: "rgba(167,139,250,0.26)", overlayBg: "rgba(0,0,0,0.50)", commandBg: "rgba(167,139,250,0.12)", commandText: "#c4b5fd", commandMuted: "rgba(196,181,253,0.78)", urlShadow: "rgba(167,139,250,0.10)" } },
+  orange: { accent: "#ea580c", light: { page: "#fff6ed", surface: "rgba(255,246,237,0.82)", inputBg: "rgba(255,255,255,0.82)", border: "rgba(234,88,12,0.14)", text: "#0f172a", muted: "rgba(234,88,12,0.50)", subtleBg: "rgba(234,88,12,0.07)", hoverBg: "rgba(234,88,12,0.07)", selectedBg: "rgba(234,88,12,0.20)", overlayBg: "rgba(31,18,8,0.18)", commandBg: "rgba(234,88,12,0.10)", commandText: "#c2410c", commandMuted: "rgba(194,65,12,0.78)", urlShadow: "rgba(234,88,12,0.12)" }, dark: { page: "#1f1208", surface: "rgba(42,26,16,0.88)", inputBg: "rgba(48,32,21,0.82)", border: "rgba(251,146,60,0.16)", text: "#e5e5e5", muted: "rgba(253,186,116,0.55)", subtleBg: "rgba(251,146,60,0.08)", hoverBg: "rgba(251,146,60,0.08)", selectedBg: "rgba(251,146,60,0.26)", overlayBg: "rgba(0,0,0,0.50)", commandBg: "rgba(251,146,60,0.12)", commandText: "#fdba74", commandMuted: "rgba(253,186,116,0.78)", urlShadow: "rgba(251,146,60,0.10)" } }
+};
+
+const THEME_SWATCH_COLORS = [
+  { key: "neutral", bg: "#1f1f1c", label: "默认" },
+  { key: "blue", bg: "#2563eb", label: "蓝色" },
+  { key: "green", bg: "#16a34a", label: "绿色" },
+  { key: "purple", bg: "#7c3aed", label: "紫色" },
+  { key: "orange", bg: "#ea580c", label: "橙色" }
+];
+
+async function getThemeTokens() {
+  const { themeColor, themeMode } = await chrome.storage.local.get(["themeColor", "themeMode"]);
+  const color = themeColor || "neutral";
+  const mode = themeMode || "light";
+  const config = THEME_COLORS_CONFIG[color] || THEME_COLORS_CONFIG.neutral;
+  return { tokens: config[mode] || config.light, accent: config.accent, color, mode };
+}
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === "open-tab-search") {
@@ -41,6 +65,14 @@ async function openTabSearch() {
   let naturalPreview = null;
   let isNaturalLoading = false;
 
+  let theme = await getThemeTokens();
+  let t = theme.tokens;
+
+  async function reloadTheme() {
+    theme = await getThemeTokens();
+    t = theme.tokens;
+  }
+
   const overlay = document.createElement("div");
   overlay.id = OVERLAY_ID;
   setStyles(overlay, {
@@ -52,7 +84,7 @@ async function openTabSearch() {
     justifyContent: "center",
     padding: "12vh 16px 24px",
     overflow: "hidden",
-    background: "rgba(15, 23, 42, 0.16)",
+    background: t.overlayBg,
     backdropFilter: "blur(10px)",
     webkitBackdropFilter: "blur(10px)",
     fontFamily: UI_FONT_FAMILY
@@ -65,12 +97,12 @@ async function openTabSearch() {
     maxHeight: "72vh",
     overflow: "hidden",
     overflowX: "hidden",
-    borderRadius: "30px",
+    borderRadius: "60px",
     cornerShape: "superellipse(2.1)",
-    background: "rgba(255, 255, 255, 0.72)",
+    background: t.surface,
     backdropFilter: "blur(24px)",
     webkitBackdropFilter: "blur(24px)",
-    border: "1px solid rgba(255, 255, 255, 0.45)",
+    border: `1px solid ${t.border}`,
     boxShadow: "0 24px 80px rgba(15, 23, 42, 0.22)",
     display: "flex",
     flexDirection: "column",
@@ -107,24 +139,24 @@ async function openTabSearch() {
     background: "transparent",
     padding: "12px 14px",
     fontSize: "18px",
-    color: "#0f172a",
+    color: t.text,
     fontFamily: UI_FONT_FAMILY
   });
 
-  const arrangeButton = createToolbarButton("一键重排", async () => {
+  const arrangeButton = createToolbarButton("整理Tab", async () => {
     setToolbarButtonBusy(arrangeButton, true, "整理中…");
 
     try {
       await chrome.runtime.sendMessage({ type: "run-ai-organization" });
       close();
     } finally {
-      setToolbarButtonBusy(arrangeButton, false, "一键重排");
+      setToolbarButtonBusy(arrangeButton, false, "整理Tab");
     }
-  });
+  }, t);
 
   const settingsButton = createToolbarButton("设置", async () => {
     await enterSettingsView();
-  });
+  }, t);
 
   const headerButtons = [arrangeButton, settingsButton];
 
@@ -135,7 +167,7 @@ async function openTabSearch() {
   const hint = document.createElement("div");
   setStyles(hint, {
     padding: "8px 22px 12px",
-    color: "rgba(15, 23, 42, 0.56)",
+    color: t.muted,
     fontSize: "12px",
     fontFamily: UI_FONT_FAMILY
   });
@@ -421,7 +453,7 @@ async function openTabSearch() {
       setStyles(empty, {
         padding: "12px 14px 16px",
         flex: "0 0 auto",
-        color: "rgba(15, 23, 42, 0.6)",
+        color: t.muted,
         fontSize: "13px",
         fontFamily: UI_FONT_FAMILY
       });
@@ -450,7 +482,7 @@ async function openTabSearch() {
       alignItems: "center",
       gap: "12px",
       padding: "12px 14px 16px",
-      color: "rgba(15, 23, 42, 0.72)",
+      color: t.muted,
       fontSize: "13px",
       fontFamily: UI_FONT_FAMILY
     });
@@ -460,8 +492,8 @@ async function openTabSearch() {
       width: "16px",
       height: "16px",
       borderRadius: "999px",
-      border: "2px solid rgba(15, 23, 42, 0.18)",
-      borderTopColor: "#0f172a",
+      border: `2px solid ${t.border}`,
+      borderTopColor: t.text,
       flex: "0 0 auto",
       animation: "ai-tab-organizer-spin 0.7s linear infinite"
     });
@@ -507,7 +539,7 @@ async function openTabSearch() {
       padding: "4px 10px 0",
       fontSize: "14px",
       fontWeight: "700",
-      color: "#0f172a"
+      color: t.text
     });
 
     const helper = document.createElement("div");
@@ -515,24 +547,35 @@ async function openTabSearch() {
     setStyles(helper, {
       padding: "0 10px",
       fontSize: "12px",
-      color: "rgba(15, 23, 42, 0.62)"
+      color: t.muted
+    });
+
+    const themeRow = createThemePicker(t, theme, async (newColor, newMode) => {
+      if (newColor !== undefined) {
+        await chrome.storage.local.set({ themeColor: newColor });
+      }
+      if (newMode !== undefined) {
+        await chrome.storage.local.set({ themeMode: newMode });
+      }
+      await reloadTheme();
+      applyThemeToPanel();
     });
 
     const status = document.createElement("div");
     setStyles(status, {
       padding: "0 10px",
       fontSize: "12px",
-      color: "rgba(15, 23, 42, 0.72)",
+      color: t.muted,
       minHeight: "18px"
     });
 
     const fields = [
-      createSettingsField("接口地址", "url", "https://api.openai.com/v1/chat/completions"),
-      createSettingsField("API Key", "password", "sk-..."),
-      createSettingsField("模型名", "text", "gpt-4.1-mini")
+      createSettingsField("接口地址", "url", "https://api.openai.com/v1/chat/completions", t),
+      createSettingsField("API Key", "password", "sk-...", t),
+      createSettingsField("模型名", "text", "gpt-4.1-mini", t)
     ];
-    const preferenceField = createSettingsTextarea("整理偏好", "例如：工作相关靠前，阅读类折叠，娱乐类靠后。");
-    const toggleField = createSettingsToggle("实验功能：整理后简化网页标题", "整理后尝试为可注入网页写入更短的临时标题。");
+    const preferenceField = createSettingsTextarea("整理偏好", "例如：工作相关靠前，阅读类折叠，娱乐类靠后。", t);
+    const toggleField = createSettingsToggle("实验功能：整理后简化网页标题", "整理后尝试为可注入网页写入更短的临时标题。", t);
 
     const actionRow = document.createElement("div");
     setStyles(actionRow, {
@@ -552,7 +595,7 @@ async function openTabSearch() {
         experimentalTitleRewriteEnabled: toggleField.input.checked
       });
       status.textContent = "已保存";
-    });
+    }, t);
 
     const runButton = createToolbarButton("保存并整理", async () => {
       status.textContent = "保存并开始整理…";
@@ -568,13 +611,14 @@ async function openTabSearch() {
       if (response?.ok || response?.skipped) {
         close();
       }
-    });
+    }, t);
 
     actionRow.appendChild(saveButton);
     actionRow.appendChild(runButton);
 
     shell.appendChild(title);
     shell.appendChild(helper);
+    shell.appendChild(themeRow);
     fields.forEach((field) => shell.appendChild(field.wrapper));
     shell.appendChild(preferenceField.wrapper);
     shell.appendChild(toggleField.wrapper);
@@ -622,8 +666,7 @@ async function openTabSearch() {
       minWidth: "0",
       maxWidth: "100%",
       overflow: "hidden",
-      paddingRight: "0",
-      transition: "padding-right 120ms ease"
+      paddingRight: "0"
     });
 
     const icon = document.createElement("div");
@@ -632,7 +675,7 @@ async function openTabSearch() {
       height: "18px",
       borderRadius: "6px",
       flex: "0 0 auto",
-      background: entry.kind === "command" ? "rgba(37, 99, 235, 0.14)" : "rgba(15, 23, 42, 0.08)",
+      background: entry.kind === "command" ? t.commandBg : t.subtleBg,
       backgroundImage: entry.kind === "tab" && entry.favIconUrl ? `url("${entry.favIconUrl}")` : "",
       backgroundSize: "cover",
       backgroundPosition: "center"
@@ -653,27 +696,55 @@ async function openTabSearch() {
     setStyles(title, {
       fontSize: "14px",
       fontWeight: "600",
-      color: entry.kind === "command" ? "#1d4ed8" : "#0f172a",
+      color: entry.kind === "command" ? t.commandText : t.text,
       whiteSpace: "nowrap",
       overflow: "hidden",
       textOverflow: "ellipsis",
       fontFamily: UI_FONT_FAMILY
+    });
+
+    const subtitleRow = document.createElement("div");
+    setStyles(subtitleRow, {
+      display: "flex",
+      alignItems: "center",
+      gap: "8px",
+      marginTop: "2px",
+      minWidth: "0",
+      overflow: "hidden"
     });
 
     const subtitle = document.createElement("div");
     subtitle.textContent = entry.subtitle;
     setStyles(subtitle, {
-      marginTop: "2px",
       fontSize: "12px",
-      color: entry.kind === "command" ? "rgba(29, 78, 216, 0.78)" : "rgba(15, 23, 42, 0.66)",
+      color: entry.kind === "command" ? t.commandMuted : t.muted,
       whiteSpace: "nowrap",
       overflow: "hidden",
       textOverflow: "ellipsis",
-      fontFamily: UI_FONT_FAMILY
+      fontFamily: UI_FONT_FAMILY,
+      flex: "1 1 auto",
+      minWidth: "0"
     });
 
+    subtitleRow.appendChild(subtitle);
+
+    const lastAccessedLabel = entry.kind === "tab" ? formatLastAccessed(entry.lastAccessed) : null;
+    if (lastAccessedLabel) {
+      const accessBadge = document.createElement("div");
+      accessBadge.textContent = lastAccessedLabel;
+      setStyles(accessBadge, {
+        fontSize: "11px",
+        color: t.muted,
+        whiteSpace: "nowrap",
+        flex: "0 0 auto",
+        opacity: "0.75",
+        fontFamily: UI_FONT_FAMILY
+      });
+      subtitleRow.appendChild(accessBadge);
+    }
+
     meta.appendChild(title);
-    meta.appendChild(subtitle);
+    meta.appendChild(subtitleRow);
     left.appendChild(icon);
     left.appendChild(meta);
     item.appendChild(left);
@@ -723,15 +794,15 @@ async function openTabSearch() {
       open: createActionButton("打开", async (event) => {
         event.stopPropagation();
         await executeEntryAction(entry, "open");
-      }),
+      }, t),
       close: createActionButton("关闭", async (event) => {
         event.stopPropagation();
         await executeEntryAction(entry, "close");
-      }),
+      }, t),
       bookmark_close: createActionButton("收藏并关闭", async (event) => {
         event.stopPropagation();
         await executeEntryAction(entry, "bookmark_close");
-      })
+      }, t)
     };
 
     container.appendChild(buttons.open);
@@ -741,12 +812,21 @@ async function openTabSearch() {
     return { container, buttons };
   }
 
+  function applyThemeToPanel() {
+    overlay.style.background = t.overlayBg;
+    panel.style.background = t.surface;
+    panel.style.borderColor = t.border;
+    input.style.color = t.text;
+    hint.style.color = t.muted;
+    updateInteractiveState();
+  }
+
   function updateInteractiveState() {
     headerButtons.forEach((button, index) => {
       const selected = headerFocusIndex === index;
       button.dataset.selected = selected ? "true" : "false";
-      button.style.background = selected ? "#2563eb" : "rgba(15, 23, 42, 0.08)";
-      button.style.color = selected ? "#fff" : "#0f172a";
+      button.style.background = selected ? theme.accent : t.subtleBg;
+      button.style.color = selected ? "#fff" : t.text;
     });
 
     rowNodes.forEach((row, index) => {
@@ -757,18 +837,20 @@ async function openTabSearch() {
       const isUrl = entry.kind === "url";
 
       item.style.background = isKeyboardSelected
-        ? "rgba(15, 23, 42, 0.10)"
-        : isCommand
-          ? "rgba(37, 99, 235, 0.06)"
-          : "transparent";
-      item.style.boxShadow = isUrl ? "inset 0 0 0 1px rgba(37, 99, 235, 0.10)" : "none";
+        ? t.selectedBg
+        : isHovered
+          ? t.hoverBg
+          : isCommand
+            ? t.commandBg
+            : "transparent";
+      item.style.boxShadow = isUrl ? `inset 0 0 0 1px ${t.urlShadow}` : "none";
 
       if (actions) {
         const showActions = isHovered || isKeyboardSelected;
         actions.container.style.opacity = showActions ? "1" : "0";
         actions.container.style.pointerEvents = showActions ? "auto" : "none";
         left.style.paddingRight = showActions ? "272px" : "0";
-        updateActionSelection(actions.buttons, isKeyboardSelected ? selectedAction : null);
+        updateActionSelection(actions.buttons, isKeyboardSelected ? selectedAction : null, theme.accent, t);
       }
 
       if (isKeyboardSelected) {
@@ -779,8 +861,8 @@ async function openTabSearch() {
     footerButtons.forEach((button, index) => {
       const selected = footerFocusIndex === index;
       button.dataset.selected = selected ? "true" : "false";
-      button.style.background = selected ? "#2563eb" : "rgba(15, 23, 42, 0.08)";
-      button.style.color = selected ? "#ffffff" : "#0f172a";
+      button.style.background = selected ? theme.accent : t.subtleBg;
+      button.style.color = selected ? "#ffffff" : t.text;
 
       if (selected) {
         button.scrollIntoView({ block: "nearest", inline: "nearest" });
@@ -918,7 +1000,7 @@ async function openTabSearch() {
         footerFocusIndex = index;
         updateInteractiveState();
         await executeNaturalBatchAction(definition.action);
-      });
+      }, t);
 
       button.addEventListener("mouseenter", () => {
         headerFocusIndex = -1;
@@ -961,7 +1043,10 @@ async function openTabSearch() {
 
 ensureSpinnerStyle();
 
-function createActionButton(label, onClick) {
+function createActionButton(label, onClick, tokens) {
+  const fg = (tokens && tokens.text) || "#0f172a";
+  const bg = (tokens && tokens.subtleBg) || "rgba(15, 23, 42, 0.08)";
+  const hoverBg = (tokens && tokens.hoverBg) || "rgba(15, 23, 42, 0.14)";
   const button = document.createElement("button");
   button.type = "button";
   button.textContent = label;
@@ -980,25 +1065,28 @@ function createActionButton(label, onClick) {
     overflow: "hidden",
     textOverflow: "ellipsis",
     fontFamily: UI_FONT_FAMILY,
-    color: "#0f172a",
-    background: "rgba(15, 23, 42, 0.08)",
+    color: fg,
+    background: bg,
     flex: "0 0 auto"
   });
   button.addEventListener("mouseenter", () => {
     if (button.dataset.selected !== "true") {
-      button.style.background = "rgba(15, 23, 42, 0.14)";
+      button.style.background = hoverBg;
     }
   });
   button.addEventListener("mouseleave", () => {
     if (button.dataset.selected !== "true") {
-      button.style.background = "rgba(15, 23, 42, 0.08)";
+      button.style.background = bg;
     }
   });
   button.addEventListener("click", onClick);
   return button;
 }
 
-function createToolbarButton(label, onClick) {
+function createToolbarButton(label, onClick, tokens) {
+  const fg = (tokens && tokens.text) || "#0f172a";
+  const bg = (tokens && tokens.subtleBg) || "rgba(15, 23, 42, 0.08)";
+  const hoverBg = (tokens && tokens.hoverBg) || "rgba(15, 23, 42, 0.14)";
   const button = document.createElement("button");
   button.type = "button";
   button.textContent = label;
@@ -1017,18 +1105,18 @@ function createToolbarButton(label, onClick) {
     cursor: "pointer",
     whiteSpace: "nowrap",
     fontFamily: UI_FONT_FAMILY,
-    color: "#0f172a",
-    background: "rgba(15, 23, 42, 0.08)",
+    color: fg,
+    background: bg,
     flex: "0 0 auto"
   });
   button.addEventListener("mouseenter", () => {
     if (button.dataset.selected !== "true") {
-      button.style.background = "rgba(15, 23, 42, 0.14)";
+      button.style.background = hoverBg;
     }
   });
   button.addEventListener("mouseleave", () => {
     if (button.dataset.selected !== "true") {
-      button.style.background = "rgba(15, 23, 42, 0.08)";
+      button.style.background = bg;
     }
   });
   button.addEventListener("click", onClick);
@@ -1042,12 +1130,15 @@ function setToolbarButtonBusy(button, busy, busyLabel) {
   button.style.cursor = busy ? "default" : "pointer";
 }
 
-function updateActionSelection(buttons, selectedAction) {
+function updateActionSelection(buttons, selectedAction, accent, tokens) {
+  const bg = (tokens && tokens.subtleBg) || "rgba(15, 23, 42, 0.08)";
+  const fg = (tokens && tokens.text) || "#0f172a";
+  const ac = accent || "#2563eb";
   Object.entries(buttons).forEach(([action, button]) => {
     const isSelected = selectedAction === action;
     button.dataset.selected = isSelected ? "true" : "false";
-    button.style.color = isSelected ? "#fff" : "#0f172a";
-    button.style.background = isSelected ? "#2563eb" : "rgba(15, 23, 42, 0.08)";
+    button.style.color = isSelected ? "#fff" : fg;
+    button.style.background = isSelected ? ac : bg;
   });
 }
 
@@ -1087,7 +1178,8 @@ function buildEntries(tabs, query) {
     tabId: tab.id,
     title: tab.title,
     subtitle: tab.url,
-    favIconUrl: tab.favIconUrl || ""
+    favIconUrl: tab.favIconUrl || "",
+    lastAccessed: tab.lastAccessed || null
   }));
 
   entries.push(...matchingTabs);
@@ -1126,8 +1218,20 @@ function buildNaturalEntries(preview) {
     tabId: tab.id,
     title: tab.title,
     subtitle: tab.url,
-    favIconUrl: tab.favIconUrl || ""
+    favIconUrl: tab.favIconUrl || "",
+    lastAccessed: tab.lastAccessed || null
   }));
+}
+
+function formatLastAccessed(lastAccessed) {
+  if (!lastAccessed) return null;
+  const minutes = Math.floor((Date.now() - lastAccessed) / 60000);
+  if (minutes < 1) return "刚刚访问";
+  if (minutes < 60) return `${minutes} 分钟前访问`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} 小时前访问`;
+  const days = Math.floor(hours / 24);
+  return `${days} 天前访问`;
 }
 
 function defaultActionForEntry(entry) {
@@ -1193,7 +1297,10 @@ function isCaretAtEnd(input) {
   return input.selectionStart === input.selectionEnd && input.selectionEnd === input.value.length;
 }
 
-function createSettingsField(label, type, placeholder) {
+function createSettingsField(label, type, placeholder, tokens) {
+  const fg = (tokens && tokens.text) || "#0f172a";
+  const inputBg = (tokens && tokens.inputBg) || "rgba(255, 255, 255, 0.82)";
+  const borderC = (tokens && tokens.border) || "rgba(15, 23, 42, 0.12)";
   const wrapper = document.createElement("label");
   setStyles(wrapper, {
     display: "flex",
@@ -1201,7 +1308,7 @@ function createSettingsField(label, type, placeholder) {
     gap: "6px",
     padding: "0 10px",
     fontSize: "12px",
-    color: "#0f172a"
+    color: fg
   });
 
   const text = document.createElement("span");
@@ -1212,12 +1319,12 @@ function createSettingsField(label, type, placeholder) {
   input.placeholder = placeholder;
   setStyles(input, {
     width: "100%",
-    border: "1px solid rgba(15, 23, 42, 0.12)",
+    border: `1px solid ${borderC}`,
     borderRadius: "12px",
     padding: "10px 12px",
     outline: "none",
-    background: "rgba(255, 255, 255, 0.82)",
-    color: "#0f172a",
+    background: inputBg,
+    color: fg,
     fontSize: "13px"
   });
 
@@ -1226,7 +1333,10 @@ function createSettingsField(label, type, placeholder) {
   return { wrapper, input };
 }
 
-function createSettingsTextarea(label, placeholder) {
+function createSettingsTextarea(label, placeholder, tokens) {
+  const fg = (tokens && tokens.text) || "#0f172a";
+  const inputBg = (tokens && tokens.inputBg) || "rgba(255, 255, 255, 0.82)";
+  const borderC = (tokens && tokens.border) || "rgba(15, 23, 42, 0.12)";
   const wrapper = document.createElement("label");
   setStyles(wrapper, {
     display: "flex",
@@ -1234,7 +1344,7 @@ function createSettingsTextarea(label, placeholder) {
     gap: "6px",
     padding: "0 10px",
     fontSize: "12px",
-    color: "#0f172a"
+    color: fg
   });
 
   const text = document.createElement("span");
@@ -1245,12 +1355,12 @@ function createSettingsTextarea(label, placeholder) {
   input.placeholder = placeholder;
   setStyles(input, {
     width: "100%",
-    border: "1px solid rgba(15, 23, 42, 0.12)",
+    border: `1px solid ${borderC}`,
     borderRadius: "12px",
     padding: "10px 12px",
     outline: "none",
-    background: "rgba(255, 255, 255, 0.82)",
-    color: "#0f172a",
+    background: inputBg,
+    color: fg,
     fontSize: "13px",
     resize: "vertical"
   });
@@ -1260,7 +1370,9 @@ function createSettingsTextarea(label, placeholder) {
   return { wrapper, input };
 }
 
-function createSettingsToggle(label, helper) {
+function createSettingsToggle(label, helper, tokens) {
+  const fg = (tokens && tokens.text) || "#0f172a";
+  const mutedC = (tokens && tokens.muted) || "rgba(15, 23, 42, 0.62)";
   const wrapper = document.createElement("label");
   setStyles(wrapper, {
     display: "flex",
@@ -1288,14 +1400,14 @@ function createSettingsToggle(label, helper) {
   setStyles(title, {
     fontSize: "13px",
     fontWeight: "600",
-    color: "#0f172a"
+    color: fg
   });
 
   const sub = document.createElement("div");
   sub.textContent = helper;
   setStyles(sub, {
     fontSize: "12px",
-    color: "rgba(15, 23, 42, 0.62)"
+    color: mutedC
   });
 
   content.appendChild(title);
@@ -1303,6 +1415,86 @@ function createSettingsToggle(label, helper) {
   wrapper.appendChild(input);
   wrapper.appendChild(content);
   return { wrapper, input };
+}
+
+function createThemePicker(tokens, currentTheme, onChange) {
+  const fg = (tokens && tokens.text) || "#0f172a";
+  const bg = (tokens && tokens.subtleBg) || "rgba(15, 23, 42, 0.08)";
+  const borderC = (tokens && tokens.border) || "rgba(15, 23, 42, 0.12)";
+
+  const row = document.createElement("div");
+  setStyles(row, {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "12px",
+    padding: "6px 10px",
+    marginBottom: "4px"
+  });
+
+  const swatchRow = document.createElement("div");
+  setStyles(swatchRow, { display: "flex", gap: "8px" });
+
+  THEME_SWATCH_COLORS.forEach((swatch) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.title = swatch.label;
+    setStyles(btn, {
+      width: "28px",
+      height: "28px",
+      borderRadius: "50%",
+      border: swatch.key === currentTheme.color ? `2px solid ${fg}` : "2px solid transparent",
+      background: swatch.bg,
+      cursor: "pointer",
+      padding: "0",
+      outline: "none",
+      transition: "border-color 120ms ease, transform 120ms ease"
+    });
+    btn.addEventListener("mouseenter", () => { btn.style.transform = "scale(1.12)"; });
+    btn.addEventListener("mouseleave", () => { btn.style.transform = "scale(1)"; });
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onChange(swatch.key, undefined);
+      swatchRow.querySelectorAll("button").forEach((b) => { b.style.borderColor = "transparent"; });
+      btn.style.borderColor = fg;
+    });
+    swatchRow.appendChild(btn);
+  });
+
+  const modeBtn = document.createElement("button");
+  modeBtn.type = "button";
+  const modeIcon = currentTheme.mode === "dark" ? "\u{1F319}" : "\u2600\uFE0F";
+  const modeLabel = currentTheme.mode === "dark" ? "深色" : "浅色";
+  modeBtn.textContent = `${modeIcon} ${modeLabel}`;
+  setStyles(modeBtn, {
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    padding: "6px 10px",
+    border: `1px solid ${borderC}`,
+    borderRadius: "10px",
+    background: bg,
+    cursor: "pointer",
+    fontSize: "12px",
+    fontWeight: "600",
+    color: fg,
+    whiteSpace: "nowrap"
+  });
+  modeBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const next = currentTheme.mode === "dark" ? "light" : "dark";
+    currentTheme.mode = next;
+    const icon = next === "dark" ? "\u{1F319}" : "\u2600\uFE0F";
+    const label = next === "dark" ? "深色" : "浅色";
+    modeBtn.textContent = `${icon} ${label}`;
+    onChange(undefined, next);
+  });
+
+  row.appendChild(swatchRow);
+  row.appendChild(modeBtn);
+  return row;
 }
 
 async function loadInlineSettings() {
@@ -1362,7 +1554,13 @@ function ensureSpinnerStyle() {
 
   const style = document.createElement("style");
   style.id = "__ai_tab_organizer_spinner_style__";
-  style.textContent = "@keyframes ai-tab-organizer-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }";
+  style.textContent = [
+    "@keyframes ai-tab-organizer-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }",
+    `#${OVERLAY_ID} ::-webkit-scrollbar { width: 4px; height: 4px; }`,
+    `#${OVERLAY_ID} ::-webkit-scrollbar-track { background: transparent; }`,
+    `#${OVERLAY_ID} ::-webkit-scrollbar-thumb { background: rgba(120,120,120,0.3); border-radius: 999px; }`,
+    `#${OVERLAY_ID} ::-webkit-scrollbar-thumb:hover { background: rgba(120,120,120,0.55); }`
+  ].join("\n");
   (document.head || document.documentElement).appendChild(style);
 }
 

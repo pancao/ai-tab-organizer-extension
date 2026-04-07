@@ -1,7 +1,7 @@
 const ACTIONS = ["open", "close", "bookmark_close"];
 const NATURAL_BATCH_ACTIONS = [
   { action: "bookmark_close", label: "关闭并加入收藏" },
-  { action: "delete", label: "关闭Tab" },
+  { action: "delete", label: "关闭搜索到的Tab" },
   { action: "group", label: "新建分组" }
 ];
 const UI_FONT_FAMILY = "sans-serif";
@@ -70,7 +70,7 @@ async function initialize() {
     border: "1px solid #dfdfda",
     outline: "none",
     background: "#fff",
-    borderRadius: "22px",
+    borderRadius: "44px",
     cornerShape: "superellipse(2.1)",
     padding: "12px 14px",
     fontSize: "18px",
@@ -78,14 +78,14 @@ async function initialize() {
     fontFamily: UI_FONT_FAMILY
   });
 
-  const arrangeButton = createToolbarButton("一键重排", async () => {
+  const arrangeButton = createToolbarButton("整理Tab", async () => {
     setToolbarButtonBusy(arrangeButton, true, "整理中…");
 
     try {
       await chrome.runtime.sendMessage({ type: "run-ai-organization" });
       window.close();
     } finally {
-      setToolbarButtonBusy(arrangeButton, false, "一键重排");
+      setToolbarButtonBusy(arrangeButton, false, "整理Tab");
     }
   });
 
