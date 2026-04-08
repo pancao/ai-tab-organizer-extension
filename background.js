@@ -48,7 +48,7 @@ async function handleRuntimeMessage(message) {
     case "get-organization-state":
       return { ok: true, state: organizationState };
     case "run-ai-organization":
-      return await organizeTabsWithAI();
+      return await organizeTabsWithAI(message.windowId);
     case "run-tab-search":
       await openTabSearch();
       return { ok: true };
@@ -70,7 +70,7 @@ async function handleRuntimeMessage(message) {
       await bookmarkAndCloseTab(message.tabId);
       return { ok: true };
     case "preview-batch-tabs":
-      return await previewBatchTabs(message.query);
+      return await previewBatchTabs(message.query, message.windowId);
     case "apply-batch-action":
       return await applyBatchAction(message);
     default:
@@ -90,7 +90,7 @@ async function openTabSearch() {
   }
 
   if (isSearchPanelBlockedTab(tab.url)) {
-    await openStandaloneSearchWindow();
+    await openStandaloneSearchWindow(tab.windowId);
     return;
   }
 
@@ -107,21 +107,25 @@ async function openTabSearch() {
 
       await chrome.tabs.sendMessage(tab.id, payload);
     } catch (_innerError) {
-      await openStandaloneSearchWindow();
+      await openStandaloneSearchWindow(tab.windowId);
     }
   }
 }
 
-async function openStandaloneSearchWindow() {
+async function openStandaloneSearchWindow(sourceWindowId) {
+  const url = new URL(chrome.runtime.getURL("search.html"));
+  if (sourceWindowId) {
+    url.searchParams.set("sourceWindowId", sourceWindowId);
+  }
   await chrome.windows.create({
-    url: chrome.runtime.getURL("search.html"),
+    url: url.toString(),
     type: "popup",
     width: 820,
     height: 720
   });
 }
 
-async function organizeTabsWithAI() {
+async function organizeTabsWithAI(windowId) {
   if (organizationState.busy) {
     return { ok: false, error: "已有一次整理正在进行中。" };
   }
@@ -148,7 +152,7 @@ async function organizeTabsWithAI() {
       detail: "正在分析当前窗口的未固定网页标签页"
     });
 
-    const windowTabs = await chrome.tabs.query({ currentWindow: true });
+    const windowTabs = await chrome.tabs.query(windowId ? { windowId } : { currentWindow: true });
     const candidateTabs = getCandidateTabs(windowTabs);
     pushLog(`读取到 ${candidateTabs.length} 个可整理标签页`);
 
@@ -215,7 +219,7 @@ async function organizeTabsWithAI() {
   }
 }
 
-async function previewBatchTabs(query) {
+async function previewBatchTabs(query, windowId) {
   const trimmedQuery = String(query || "").trim();
 
   if (!trimmedQuery) {
@@ -228,7 +232,7 @@ async function previewBatchTabs(query) {
     return { ok: false, error: "请先在设置页填写 API Key。" };
   }
 
-  const currentTabs = getCandidateTabs(await chrome.tabs.query({ currentWindow: true }));
+  const currentTabs = getCandidateTabs(await chrome.tabs.query(windowId ? { windowId } : { currentWindow: true }));
 
   if (currentTabs.length === 0) {
     return { ok: false, error: "当前窗口没有可操作的网页标签页。" };
