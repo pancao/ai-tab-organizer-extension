@@ -262,8 +262,9 @@ async function applyBatchAction(message) {
     return { ok: false, error: "还没有选中任何标签页。" };
   }
 
-  const tabs = await Promise.all(tabIds.map((tabId) => chrome.tabs.get(tabId)));
-  const validTabs = tabs.filter((tab) => tab.id);
+  const results = await Promise.allSettled(tabIds.map((tabId) => chrome.tabs.get(tabId)));
+  const validTabs = results.filter((r) => r.status === "fulfilled").map((r) => r.value).filter((tab) => tab.id);
+  const validTabIds = validTabs.map((tab) => tab.id);
 
   if (validTabs.length === 0) {
     return { ok: false, error: "选中的标签页已经不存在了。" };
@@ -271,7 +272,7 @@ async function applyBatchAction(message) {
 
   if (action === "group") {
     const label = customLabel || deriveBatchLabel(query, validTabs);
-    const groupId = await chrome.tabs.group({ tabIds });
+    const groupId = await chrome.tabs.group({ tabIds: validTabIds });
     await chrome.tabGroups.update(groupId, {
       title: label,
       color: "grey",
@@ -282,7 +283,7 @@ async function applyBatchAction(message) {
   }
 
   if (action === "delete") {
-    await chrome.tabs.remove(tabIds);
+    await chrome.tabs.remove(validTabIds);
     return { ok: true, summary: `已关闭 ${validTabs.length} 个标签页` };
   }
 
