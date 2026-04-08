@@ -771,7 +771,11 @@ async function initialize() {
     }
 
     if (action === "close") {
-      await chrome.runtime.sendMessage({ type: "close-tab", tabId: entry.tabId });
+      const response = await chrome.runtime.sendMessage({ type: "close-tab", tabId: entry.tabId });
+      if (!response?.ok) {
+        hint.textContent = response?.error || "关闭标签页失败";
+        return;
+      }
       tabs = tabs.filter((tab) => tab.id !== entry.tabId);
       hoveredIndex = null;
       selectedAction = null;
@@ -780,7 +784,11 @@ async function initialize() {
     }
 
     if (action === "bookmark_close") {
-      await chrome.runtime.sendMessage({ type: "bookmark-and-close-tab", tabId: entry.tabId });
+      const response = await chrome.runtime.sendMessage({ type: "bookmark-and-close-tab", tabId: entry.tabId });
+      if (!response?.ok) {
+        hint.textContent = response?.error || "收藏并关闭失败";
+        return;
+      }
       tabs = tabs.filter((tab) => tab.id !== entry.tabId);
       hoveredIndex = null;
       selectedAction = null;
@@ -892,13 +900,18 @@ async function initialize() {
       return;
     }
 
-    await chrome.runtime.sendMessage({
+    const response = await chrome.runtime.sendMessage({
       type: "apply-batch-action",
       action,
       tabIds: (naturalPreview?.tabs || []).map((tab) => tab.id),
       query: naturalPreview?.query || input.value.trim(),
       label: naturalPreview?.suggestedLabel || ""
     });
+
+    if (!response?.ok) {
+      hint.textContent = response?.error || "批量操作失败";
+      return;
+    }
 
     window.close();
   }

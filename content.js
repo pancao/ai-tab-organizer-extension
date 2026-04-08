@@ -991,7 +991,8 @@ async function openTabSearch(prefetchedTabs) {
     }
 
     if (action === "close") {
-      await chrome.runtime.sendMessage({ type: "close-tab", tabId: entry.tabId });
+      const response = await chrome.runtime.sendMessage({ type: "close-tab", tabId: entry.tabId });
+      if (!response?.ok) return;
       tabs = tabs.filter((tab) => tab.id !== entry.tabId);
       hoveredIndex = null;
       selectedAction = null;
@@ -1000,7 +1001,8 @@ async function openTabSearch(prefetchedTabs) {
     }
 
     if (action === "bookmark_close") {
-      await chrome.runtime.sendMessage({ type: "bookmark-and-close-tab", tabId: entry.tabId });
+      const response = await chrome.runtime.sendMessage({ type: "bookmark-and-close-tab", tabId: entry.tabId });
+      if (!response?.ok) return;
       tabs = tabs.filter((tab) => tab.id !== entry.tabId);
       hoveredIndex = null;
       selectedAction = null;
@@ -1090,13 +1092,15 @@ async function openTabSearch(prefetchedTabs) {
       return;
     }
 
-    await chrome.runtime.sendMessage({
+    const response = await chrome.runtime.sendMessage({
       type: "apply-batch-action",
       action,
       tabIds: (naturalPreview?.tabs || []).map((tab) => tab.id),
       query: naturalPreview?.query || input.value.trim(),
       label: naturalPreview?.suggestedLabel || ""
     });
+
+    if (!response?.ok) return;
 
     close();
   }
