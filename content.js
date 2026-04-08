@@ -58,12 +58,15 @@ async function getThemeTokens() {
   return { tokens: config[mode] || config.light, accent: config.accent, color, mode };
 }
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message?.type === "open-tab-search") {
-    openTabSearch(message.tabs);
-    sendResponse({ ok: true });
-  }
-});
+if (!window.__aiTabOrganizerListenerRegistered__) {
+  window.__aiTabOrganizerListenerRegistered__ = true;
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message?.type === "open-tab-search") {
+      openTabSearch(message.tabs);
+      sendResponse({ ok: true });
+    }
+  });
+}
 
 async function openTabSearch(prefetchedTabs) {
   const existing = document.getElementById(OVERLAY_ID);
