@@ -35,7 +35,7 @@ const BUTTON_ICONS = {
 };
 
 const THEME_COLORS_CONFIG = {
-  neutral: { accent: "#1f1f1c", light: { page: "#f6f6f4", surface: "rgba(255,255,255,0.72)", inputBg: "rgba(255,255,255,0.82)", border: "rgba(15,23,42,0.12)", text: "#0f172a", muted: "rgba(15,23,42,0.56)", subtleBg: "rgba(15,23,42,0.07)", hoverBg: "rgba(15,23,42,0.18)", selectedBg: "rgba(15,23,42,0.13)", overlayBg: "rgba(15,23,42,0.16)", commandBg: "rgba(37,99,235,0.08)", commandText: "#1d4ed8", commandMuted: "rgba(29,78,216,0.78)", urlShadow: "rgba(37,99,235,0.10)" }, dark: { page: "#1a1a1a", surface: "rgba(30,30,30,0.88)", inputBg: "rgba(40,40,40,0.82)", border: "rgba(255,255,255,0.12)", text: "#e5e5e5", muted: "rgba(255,255,255,0.50)", subtleBg: "rgba(255,255,255,0.07)", hoverBg: "rgba(255,255,255,0.22)", selectedBg: "rgba(255,255,255,0.18)", overlayBg: "rgba(0,0,0,0.50)", commandBg: "rgba(96,165,250,0.10)", commandText: "#93bbfd", commandMuted: "rgba(147,187,253,0.78)", urlShadow: "rgba(96,165,250,0.10)" } },
+  neutral: { accent: "#1f1f1c", light: { page: "#f6f6f4", surface: "rgba(255,255,255,0.72)", inputBg: "rgba(255,255,255,0.82)", border: "rgba(15,23,42,0.12)", text: "#0f172a", muted: "rgba(15,23,42,0.56)", subtleBg: "rgba(15,23,42,0.07)", hoverBg: "rgba(15,23,42,0.18)", selectedBg: "rgba(15,23,42,0.13)", overlayBg: "rgba(15,23,42,0.16)", commandBg: "rgba(15,23,42,0.07)", commandText: "#1f1f1c", commandMuted: "rgba(15,23,42,0.55)", urlShadow: "rgba(15,23,42,0.08)" }, dark: { page: "#1a1a1a", surface: "rgba(30,30,30,0.88)", inputBg: "rgba(40,40,40,0.82)", border: "rgba(255,255,255,0.12)", text: "#e5e5e5", muted: "rgba(255,255,255,0.50)", subtleBg: "rgba(255,255,255,0.07)", hoverBg: "rgba(255,255,255,0.22)", selectedBg: "rgba(255,255,255,0.18)", overlayBg: "rgba(0,0,0,0.50)", commandBg: "rgba(255,255,255,0.08)", commandText: "#d4d4d4", commandMuted: "rgba(212,212,212,0.65)", urlShadow: "rgba(255,255,255,0.06)" } },
   blue: { accent: "#2563eb", light: { page: "#f0f4ff", surface: "rgba(240,245,255,0.82)", inputBg: "rgba(255,255,255,0.82)", border: "rgba(37,99,235,0.14)", text: "#0f172a", muted: "rgba(37,99,235,0.50)", subtleBg: "rgba(37,99,235,0.07)", hoverBg: "rgba(37,99,235,0.20)", selectedBg: "rgba(37,99,235,0.20)", overlayBg: "rgba(16,24,40,0.18)", commandBg: "rgba(37,99,235,0.10)", commandText: "#1d4ed8", commandMuted: "rgba(29,78,216,0.78)", urlShadow: "rgba(37,99,235,0.12)" }, dark: { page: "#101828", surface: "rgba(26,37,64,0.88)", inputBg: "rgba(30,42,72,0.82)", border: "rgba(96,165,250,0.16)", text: "#e5e5e5", muted: "rgba(147,187,253,0.55)", subtleBg: "rgba(96,165,250,0.08)", hoverBg: "rgba(96,165,250,0.26)", selectedBg: "rgba(96,165,250,0.26)", overlayBg: "rgba(0,0,0,0.50)", commandBg: "rgba(96,165,250,0.12)", commandText: "#93bbfd", commandMuted: "rgba(147,187,253,0.78)", urlShadow: "rgba(96,165,250,0.10)" } },
   green: { accent: "#16a34a", light: { page: "#eefbf2", surface: "rgba(238,251,242,0.82)", inputBg: "rgba(255,255,255,0.82)", border: "rgba(22,163,74,0.14)", text: "#0f172a", muted: "rgba(22,163,74,0.52)", subtleBg: "rgba(22,163,74,0.07)", hoverBg: "rgba(22,163,74,0.20)", selectedBg: "rgba(22,163,74,0.20)", overlayBg: "rgba(14,31,20,0.18)", commandBg: "rgba(22,163,74,0.10)", commandText: "#15803d", commandMuted: "rgba(21,128,61,0.78)", urlShadow: "rgba(22,163,74,0.12)" }, dark: { page: "#0e1f14", surface: "rgba(21,42,28,0.88)", inputBg: "rgba(26,48,34,0.82)", border: "rgba(74,222,128,0.14)", text: "#e5e5e5", muted: "rgba(134,239,172,0.55)", subtleBg: "rgba(74,222,128,0.08)", hoverBg: "rgba(74,222,128,0.26)", selectedBg: "rgba(74,222,128,0.24)", overlayBg: "rgba(0,0,0,0.50)", commandBg: "rgba(74,222,128,0.10)", commandText: "#86efac", commandMuted: "rgba(134,239,172,0.78)", urlShadow: "rgba(74,222,128,0.10)" } },
   purple: { accent: "#7c3aed", light: { page: "#f5f0ff", surface: "rgba(245,240,255,0.82)", inputBg: "rgba(255,255,255,0.82)", border: "rgba(124,58,237,0.14)", text: "#0f172a", muted: "rgba(124,58,237,0.50)", subtleBg: "rgba(124,58,237,0.07)", hoverBg: "rgba(124,58,237,0.20)", selectedBg: "rgba(124,58,237,0.20)", overlayBg: "rgba(24,16,42,0.18)", commandBg: "rgba(124,58,237,0.10)", commandText: "#6d28d9", commandMuted: "rgba(109,40,217,0.78)", urlShadow: "rgba(124,58,237,0.12)" }, dark: { page: "#18102a", surface: "rgba(34,24,64,0.88)", inputBg: "rgba(40,30,72,0.82)", border: "rgba(167,139,250,0.16)", text: "#e5e5e5", muted: "rgba(196,181,253,0.55)", subtleBg: "rgba(167,139,250,0.08)", hoverBg: "rgba(167,139,250,0.26)", selectedBg: "rgba(167,139,250,0.26)", overlayBg: "rgba(0,0,0,0.50)", commandBg: "rgba(167,139,250,0.12)", commandText: "#c4b5fd", commandMuted: "rgba(196,181,253,0.78)", urlShadow: "rgba(167,139,250,0.10)" } },
@@ -626,7 +626,7 @@ async function openTabSearch(prefetchedTabs) {
     });
 
     const helper = document.createElement("div");
-    helper.textContent = "设置主题色、服务商、AI 接口和整理偏好，切换服务商会带入推荐地址和模型。";
+    helper.textContent = "设置主题色、服务商、AI 接口和整理偏好";
     setStyles(helper, {
       padding: "0 10px",
       fontSize: "12px",
@@ -655,7 +655,7 @@ async function openTabSearch(prefetchedTabs) {
     const providerField = createSettingsSelect("服务商", t);
     populateAIProviderSelect(providerField.input);
 
-    const endpointField = createSettingsField("接口地址", "url", "https://api.openai.com/v1/chat/completions", t);
+    const endpointField = createSettingsField("接口地址", "text", "https://api.openai.com/v1/chat/completions", t);
     const apiKeyField = createSettingsField("API Key", "password", "sk-...", t);
     const modelField = createSettingsSelect("模型名", t);
     const customModelInput = createSettingsStandaloneInput("text", "输入自定义模型名", t);
@@ -1470,21 +1470,17 @@ function createSettingsField(label, type, placeholder, tokens) {
   const input = document.createElement("input");
   input.type = type;
   input.placeholder = placeholder;
+  input.autocomplete = "off";
+  input.setAttribute("data-lpignore", "true");
+  input.setAttribute("data-1p-ignore", "true");
+  input.setAttribute("data-form-type", "other");
   setStyles(input, {
     width: "100%",
     border: `1px solid ${settingsBorderC}`,
     borderRadius: "12px",
     padding: "10px 12px",
-    paddingRight: "40px",
     outline: "none",
     background: settingsInputBg,
-    appearance: "none",
-    WebkitAppearance: "none",
-    backgroundImage:
-      "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2 4.5L6 8L10 4.5' stroke='%236d6d67' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")",
-    backgroundRepeat: "no-repeat",
-    backgroundPosition: "right 14px center",
-    backgroundSize: "12px 12px",
     color: fg,
     fontSize: "13px"
   });

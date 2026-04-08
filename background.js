@@ -338,7 +338,7 @@ async function requestBatchSelection(query, tabs, settings) {
 
   return await requestJSONFromAI(
     settings,
-    "You select browser tabs from a list based on a natural-language request. Return strict JSON only. Pick only strongly relevant tabs. Output selectedTabIds as an array of numbers, a short rationale string, and a suggestedLabel string. Each tab may include idleMin (integer: minutes since last accessed) — use it for time-based queries like 'not opened in 30 minutes' or 'inactive for an hour'. Tabs without idleMin have unknown access time.",
+    "You select browser tabs from a list based on a natural-language request. Return strict JSON only. Pick all relevant tabs — match against title, url, AND domain (e.g. a query for 'Pinterest' should match tabs whose domain contains 'pinterest' even if the title does not mention it). Output selectedTabIds as an array of numbers, a short rationale string, and a suggestedLabel string. Each tab may include idleMin (integer: minutes since last accessed) — use it for time-based queries like 'not opened in 30 minutes' or 'inactive for an hour'. Tabs without idleMin have unknown access time.",
     JSON.stringify(
       {
         task: "Select tabs that match the user's natural-language request.",
