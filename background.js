@@ -258,8 +258,11 @@ async function applyBatchAction(message) {
     return { ok: false, error: "还没有选中任何标签页。" };
   }
 
-  const tabs = await Promise.all(tabIds.map((tabId) => chrome.tabs.get(tabId)));
-  const validTabs = tabs.filter((tab) => tab.id);
+  const results = await Promise.allSettled(tabIds.map((tabId) => chrome.tabs.get(tabId)));
+  const validTabs = results
+    .filter((result) => result.status === "fulfilled")
+    .map((result) => result.value)
+    .filter((tab) => tab.id);
 
   if (validTabs.length === 0) {
     return { ok: false, error: "选中的标签页已经不存在了。" };
