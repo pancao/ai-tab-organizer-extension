@@ -1,3 +1,16 @@
+const {
+  AI_PROVIDER_STORAGE_KEY,
+  CUSTOM_AI_MODEL_OPTION_VALUE,
+  applyAIProviderPreset,
+  detectAIProviderPreset,
+  normalizeAIEndpoint,
+  populateAIModelSelect,
+  populateAIProviderSelect,
+  resolveAIModelSelection,
+  resolveAISettingsDraft,
+  updateAIKeyPlaceholder
+} = globalThis.AIProviderConfig;
+
 const ACTIONS = ["open", "close", "bookmark_close"];
 const NATURAL_BATCH_ACTIONS = [
   { action: "bookmark_close", label: "关闭并加入收藏" },
@@ -458,7 +471,7 @@ async function initialize() {
     });
 
     const helper = document.createElement("div");
-    helper.textContent = "设置主题色、AI接口和整理偏好";
+    helper.textContent = "设置主题色、服务商、AI 接口和整理偏好，切换服务商会带入推荐地址和模型。";
     setStyles(helper, {
       padding: "0 10px",
       fontSize: "12px",
@@ -473,11 +486,15 @@ async function initialize() {
       minHeight: "18px"
     });
 
-    const fields = [
-      createSettingsField("接口地址", "url", "https://api.openai.com/v1/chat/completions"),
-      createSettingsField("API Key", "password", "sk-..."),
-      createSettingsField("模型名", "text", "gpt-4.1-mini")
-    ];
+    const providerField = createSettingsSelect("服务商");
+    populateAIProviderSelect(providerField.input);
+
+    const endpointField = createSettingsField("接口地址", "url", "https://api.openai.com/v1/chat/completions");
+    const apiKeyField = createSettingsField("API Key", "password", "sk-...");
+    const modelField = createSettingsSelect("模型名");
+    const customModelInput = createSettingsStandaloneInput("text", "输入自定义模型名");
+    customModelInput.style.display = "none";
+    modelField.wrapper.appendChild(customModelInput);
     const preferenceField = createSettingsTextarea("整理偏好", "例如：工作相关靠前，阅读类折叠，娱乐类靠后。");
     const toggleField = createSettingsToggle("实验功能：整理后简化网页标题", "整理后尝试为可注入网页写入更短的临时标题。");
 
@@ -492,9 +509,10 @@ async function initialize() {
     const saveButton = createToolbarButton("保存设置", async () => {
       status.textContent = "正在保存…";
       await saveInlineSettings({
-        endpoint: fields[0].input.value,
-        apiKey: fields[1].input.value,
-        model: fields[2].input.value,
+        providerId: providerField.input.value,
+        endpoint: endpointField.input.value,
+        apiKey: apiKeyField.input.value,
+        model: getCurrentModelValue(),
         preference: preferenceField.input.value,
         experimentalTitleRewriteEnabled: toggleField.input.checked
       });
@@ -504,9 +522,10 @@ async function initialize() {
     const runButton = createToolbarButton("保存并立即整理标签页", async () => {
       status.textContent = "保存并开始整理…";
       await saveInlineSettings({
-        endpoint: fields[0].input.value,
-        apiKey: fields[1].input.value,
-        model: fields[2].input.value,
+        providerId: providerField.input.value,
+        endpoint: endpointField.input.value,
+        apiKey: apiKeyField.input.value,
+        model: getCurrentModelValue(),
         preference: preferenceField.input.value,
         experimentalTitleRewriteEnabled: toggleField.input.checked
       });
@@ -522,24 +541,77 @@ async function initialize() {
 
     shell.appendChild(title);
     shell.appendChild(helper);
-    fields.forEach((field) => shell.appendChild(field.wrapper));
+    shell.appendChild(providerField.wrapper);
+    shell.appendChild(endpointField.wrapper);
+    shell.appendChild(apiKeyField.wrapper);
+    shell.appendChild(modelField.wrapper);
     shell.appendChild(preferenceField.wrapper);
     shell.appendChild(toggleField.wrapper);
     shell.appendChild(actionRow);
     shell.appendChild(status);
     list.appendChild(shell);
 
+    providerField.input.addEventListener("change", () => {
+      const nextDraft = applyAIProviderPreset(providerField.input.value, {
+        endpoint: endpointField.input.value,
+        apiKey: apiKeyField.input.value,
+        model: getCurrentModelValue(),
+        preference: preferenceField.input.value,
+        experimentalTitleRewriteEnabled: toggleField.input.checked
+      });
+
+      endpointField.input.value = nextDraft.endpoint;
+      syncModelControls(nextDraft.providerId, nextDraft.model);
+      updateAIKeyPlaceholder(apiKeyField.input, nextDraft.providerId);
+    });
+
+    endpointField.input.addEventListener("input", () => {
+      providerField.input.value = detectAIProviderPreset(endpointField.input.value);
+      syncModelControls(providerField.input.value, getCurrentModelValue());
+      updateAIKeyPlaceholder(apiKeyField.input, providerField.input.value);
+    });
+
+    modelField.input.addEventListener("change", () => {
+      const isCustom = modelField.input.value === CUSTOM_AI_MODEL_OPTION_VALUE;
+
+      if (isCustom && !customModelInput.value.trim()) {
+        customModelInput.value = modelField.input.dataset.selectedPresetModel || "";
+      }
+
+      if (!isCustom) {
+        modelField.input.dataset.selectedPresetModel = modelField.input.value;
+      }
+
+      customModelInput.style.display = isCustom ? "block" : "none";
+    });
+
     loadInlineSettings()
       .then((settings) => {
-        fields[0].input.value = settings.endpoint;
-        fields[1].input.value = settings.apiKey;
-        fields[2].input.value = settings.model;
+        providerField.input.value = settings.providerId;
+        endpointField.input.value = settings.endpoint;
+        apiKeyField.input.value = settings.apiKey;
+        syncModelControls(settings.providerId, settings.model);
         preferenceField.input.value = settings.preference;
         toggleField.input.checked = settings.experimentalTitleRewriteEnabled;
+        updateAIKeyPlaceholder(apiKeyField.input, settings.providerId);
       })
       .catch((error) => {
         status.textContent = error instanceof Error ? error.message : "读取设置失败";
       });
+
+    function syncModelControls(providerId, modelValue) {
+      const selection = resolveAIModelSelection(providerId, modelValue);
+      populateAIModelSelect(modelField.input, providerId, modelValue);
+      modelField.input.value = selection.selectedValue;
+      modelField.input.dataset.selectedPresetModel =
+        selection.selectedValue === CUSTOM_AI_MODEL_OPTION_VALUE ? selection.options[0]?.value || "" : selection.selectedValue;
+      customModelInput.value = selection.customValue;
+      customModelInput.style.display = selection.selectedValue === CUSTOM_AI_MODEL_OPTION_VALUE ? "block" : "none";
+    }
+
+    function getCurrentModelValue() {
+      return modelField.input.value === CUSTOM_AI_MODEL_OPTION_VALUE ? customModelInput.value.trim() : modelField.input.value;
+    }
   }
 
   function createRow(entry, index) {
@@ -1012,7 +1084,7 @@ function buildEntries(tabs, query) {
       kind: "command",
       command: "settings",
       title: "设置",
-      subtitle: "设置主题色、AI接口和整理偏好"
+      subtitle: "设置主题色、服务商、AI 接口和整理偏好"
     });
   }
 
@@ -1164,6 +1236,45 @@ function createSettingsField(label, type, placeholder) {
     border: "1px solid rgba(15, 23, 42, 0.12)",
     borderRadius: "12px",
     padding: "10px 12px",
+    paddingRight: "40px",
+    outline: "none",
+    background: "#ffffff",
+    appearance: "none",
+    WebkitAppearance: "none",
+    backgroundImage:
+      "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2 4.5L6 8L10 4.5' stroke='%236d6d67' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")",
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: "right 14px center",
+    backgroundSize: "12px 12px",
+    color: "#0f172a",
+    fontSize: "13px"
+  });
+
+  wrapper.appendChild(text);
+  wrapper.appendChild(input);
+  return { wrapper, input };
+}
+
+function createSettingsSelect(label) {
+  const wrapper = document.createElement("label");
+  setStyles(wrapper, {
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
+    padding: "0 10px",
+    fontSize: "12px",
+    color: "#0f172a"
+  });
+
+  const text = document.createElement("span");
+  text.textContent = label;
+
+  const input = document.createElement("select");
+  setStyles(input, {
+    width: "100%",
+    border: "1px solid rgba(15, 23, 42, 0.12)",
+    borderRadius: "12px",
+    padding: "10px 12px",
     outline: "none",
     background: "#ffffff",
     color: "#0f172a",
@@ -1173,6 +1284,23 @@ function createSettingsField(label, type, placeholder) {
   wrapper.appendChild(text);
   wrapper.appendChild(input);
   return { wrapper, input };
+}
+
+function createSettingsStandaloneInput(type, placeholder) {
+  const input = document.createElement("input");
+  input.type = type;
+  input.placeholder = placeholder;
+  setStyles(input, {
+    width: "100%",
+    border: "1px solid rgba(15, 23, 42, 0.12)",
+    borderRadius: "12px",
+    padding: "10px 12px",
+    outline: "none",
+    background: "#ffffff",
+    color: "#0f172a",
+    fontSize: "13px"
+  });
+  return input;
 }
 
 function createSettingsTextarea(label, placeholder) {
@@ -1256,6 +1384,7 @@ function createSettingsToggle(label, helper) {
 
 async function loadInlineSettings() {
   const stored = await chrome.storage.local.get([
+    AI_PROVIDER_STORAGE_KEY,
     "aiEndpoint",
     "aiApiKey",
     "aiModel",
@@ -1263,45 +1392,20 @@ async function loadInlineSettings() {
     "experimentalTitleRewriteEnabled"
   ]);
 
-  return {
-    endpoint: normalizeSettingsEndpoint(stored.aiEndpoint || "https://api.openai.com/v1/chat/completions"),
-    apiKey: stored.aiApiKey || "",
-    model: stored.aiModel || "gpt-4.1-mini",
-    preference: stored.aiPreference || "",
-    experimentalTitleRewriteEnabled: Boolean(stored.experimentalTitleRewriteEnabled)
-  };
+  return resolveAISettingsDraft(stored);
 }
 
 async function saveInlineSettings(settings) {
-  const endpoint = normalizeSettingsEndpoint(settings.endpoint);
+  const endpoint = normalizeAIEndpoint(settings.endpoint);
 
   await chrome.storage.local.set({
+    [AI_PROVIDER_STORAGE_KEY]: settings.providerId || detectAIProviderPreset(endpoint),
     aiEndpoint: endpoint,
     aiApiKey: String(settings.apiKey || "").trim(),
     aiModel: String(settings.model || "").trim(),
     aiPreference: String(settings.preference || "").trim(),
     experimentalTitleRewriteEnabled: Boolean(settings.experimentalTitleRewriteEnabled)
   });
-}
-
-function normalizeSettingsEndpoint(endpoint) {
-  const value = String(endpoint || "").trim();
-
-  if (!value) {
-    return "https://api.openai.com/v1/chat/completions";
-  }
-
-  try {
-    const url = new URL(value);
-
-    if (url.pathname === "/" || url.pathname === "" || url.pathname === "/v1" || url.pathname === "/v1/") {
-      url.pathname = "/v1/chat/completions";
-    }
-
-    return url.toString();
-  } catch (_error) {
-    return value;
-  }
 }
 
 function ensureSpinnerStyle() {

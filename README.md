@@ -37,8 +37,20 @@
 3. 点击“加载已解压的扩展程序”
 4. 选择这个目录
 5. 打开扩展弹窗，点击“打开设置”
-6. 填写 AI 接口地址、API Key、模型名
+6. 选择服务商预置，或手动填写 AI 接口地址、API Key、模型名
 7. 回到弹窗点击“开始整理”
+
+当前内置了这些常见预置：
+
+- OpenAI
+- OpenRouter
+- Groq
+- DeepSeek
+- 硅基流动
+- 阿里云百炼（OpenAI 兼容入口）
+- 自定义
+
+这些预置只覆盖兼容 OpenAI Chat Completions 的接口，切换后会自动带入推荐地址和常见模型列表；如果列表里没有你要的模型，也可以切到自定义模型继续填写。
 
 接口地址可以填：
 
@@ -57,6 +69,7 @@
 ## 文件说明
 
 - `manifest.json`: 扩展权限、弹窗、设置页、快捷键
+- `ai-provider-config.js`: AI 服务商预置和接口归一化逻辑
 - `background.js`: AI 调用、排序和 tab group 应用逻辑
 - `background.js`: 也负责自然语言筛选 tab、批量分组/删除/书签
 - `content.js`: 页面内标签页搜索面板
