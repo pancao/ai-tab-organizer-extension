@@ -1,4 +1,4 @@
-# AI Tab Organizer
+# Arc Tabs
 
 一个独立的 Chrome 扩展，用 AI 整理当前窗口里的标签页，并把整理状态直接显示在弹窗里。
 

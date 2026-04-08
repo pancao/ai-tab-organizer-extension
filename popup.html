@@ -1,118 +1,125 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AI Tab Organizer</title>
-    <link rel="stylesheet" href="ui.css" />
-  </head>
-  <body class="popup-body">
-    <main class="popup-shell">
-      <section id="popup-home" class="popup-page">
-        <section class="surface compact-surface">
-          <div class="section-title">快捷键</div>
-          <div class="shortcut-list">
-            <div class="shortcut-item">
-              <div class="shortcut-copy">AI 重排当前窗口</div>
-              <kbd id="organize-shortcut" class="shortcut-key">⌘⇧J</kbd>
-            </div>
-            <div class="shortcut-item">
-              <div class="shortcut-copy">搜索标签页</div>
-              <kbd id="search-shortcut" class="shortcut-key">⌘⇧K</kbd>
-            </div>
-          </div>
-        </section>
 
-        <section class="surface compact-surface">
-          <div class="button-stack popup-main-actions">
-            <button id="run-button" class="primary-button large-button">一键整理标签页</button>
-            <button id="settings-button" class="secondary-button large-button">设置</button>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Arc Tabs</title>
+  <link rel="stylesheet" href="ui.css" />
+</head>
+
+<body class="popup-body">
+  <main class="popup-shell">
+    <section id="popup-home" class="popup-page">
+      <section class="surface compact-surface">
+        <div class="section-title">快捷键</div>
+        <div class="shortcut-list">
+          <div class="shortcut-item">
+            <div class="shortcut-copy">整理标签页</div>
+            <kbd id="organize-shortcut" class="shortcut-key">⌘⇧J</kbd>
           </div>
-          <div class="button-row compact-actions">
-            <button id="view-result-button" class="secondary-button" disabled>查看最近一次结果</button>
+          <div class="shortcut-item">
+            <div class="shortcut-copy">搜索标签页</div>
+            <kbd id="search-shortcut" class="shortcut-key">⌘⇧K</kbd>
           </div>
-        </section>
+        </div>
       </section>
 
-      <section id="popup-settings-view" class="popup-page hidden">
-        <section class="surface compact-surface">
-          <div class="section-head">
-            <div>
-              <div class="section-title">设置</div>
-              <div class="muted-copy">在弹窗里直接调整 AI 配置。</div>
-            </div>
-            <button id="settings-back-button" class="secondary-button">返回</button>
-          </div>
-
-          <div class="theme-section">
-            <div class="theme-colors">
-              <button class="theme-swatch" data-color="neutral" title="默认"></button>
-              <button class="theme-swatch" data-color="blue" title="蓝色"></button>
-              <button class="theme-swatch" data-color="green" title="绿色"></button>
-              <button class="theme-swatch" data-color="purple" title="紫色"></button>
-              <button class="theme-swatch" data-color="orange" title="橙色"></button>
-            </div>
-            <button id="mode-toggle" class="mode-toggle">
-              <span class="mode-toggle-icon">☀️</span>
-              <span class="mode-toggle-label">浅色</span>
-            </button>
-          </div>
-
-          <div class="settings-stack">
-            <label class="field">
-              <span>接口地址</span>
-              <input id="endpoint-input" type="url" placeholder="https://api.openai.com/v1/chat/completions" />
-            </label>
-
-            <label class="field">
-              <span>API Key</span>
-              <input id="api-key-input" type="password" placeholder="sk-..." />
-            </label>
-
-            <label class="field">
-              <span>模型名</span>
-              <input id="model-input" type="text" placeholder="gpt-4.1-mini" />
-            </label>
-
-            <div class="helper-inline">填到根路径或 `/v1` 也可以，插件会自动补全到 Chat Completions。</div>
-
-            <label class="field large-field">
-              <span>整理偏好</span>
-              <textarea id="preference-input" rows="5" placeholder="例如：工作相关靠前，阅读类折叠，娱乐类靠后。"></textarea>
-            </label>
-
-            <label class="toggle-field">
-              <input id="title-rewrite-input" type="checkbox" />
-              <span>
-                <strong>实验功能：整理后简化网页标题</strong>
-                <small>AI 重排完成后，尝试为可注入网页写入更短的临时标题。刷新页面或网站自行改标题后可能失效。</small>
-              </span>
-            </label>
-
-            <div class="button-row minimal-actions">
-              <button id="save-button" class="primary-button">保存设置</button>
-              <button id="save-run-button" class="secondary-button">保存并立即整理</button>
-            </div>
-
-            <div id="settings-status-text" class="helper-text"></div>
-          </div>
-        </section>
+      <section class="surface compact-surface">
+        <div class="button-stack popup-main-actions">
+          <button id="run-button" class="primary-button large-button">一键整理标签页</button>
+          <button id="search-button" class="secondary-button large-button">打开搜索框</button>
+          <button id="settings-button" class="secondary-button large-button">设置</button>
+        </div>
       </section>
+    </section>
 
-      <section id="popup-result-view" class="popup-page hidden">
-        <section class="surface compact-surface">
-          <div class="section-head">
-            <div>
-              <div class="section-title">最近一次整理结果</div>
-              <div id="detail-summary" class="status-title">暂无结果</div>
-            </div>
-            <button id="back-button" class="secondary-button">返回</button>
+    <section id="popup-settings-view" class="popup-page hidden">
+      <section class="surface compact-surface">
+        <div class="section-head">
+          <div class="settings-page-title">设置</div>
+          <button id="settings-back-button" class="secondary-button">返回</button>
+        </div>
+
+        <div class="theme-section">
+          <div class="theme-colors">
+            <button class="theme-swatch" data-color="neutral" title="默认"></button>
+            <button class="theme-swatch" data-color="blue" title="蓝色"></button>
+            <button class="theme-swatch" data-color="green" title="绿色"></button>
+            <button class="theme-swatch" data-color="purple" title="紫色"></button>
+            <button class="theme-swatch" data-color="orange" title="橙色"></button>
           </div>
-          <div id="group-list" class="group-list"></div>
-        </section>
+          <button id="mode-toggle" class="mode-toggle" data-mode="light" title="切换深浅色">
+            <span class="mode-toggle-track">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="4" />
+                <path
+                  d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+              </svg>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            </span>
+            <span class="mode-toggle-thumb">
+              <svg class="thumb-sun" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="4" />
+                <path
+                  d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+              </svg>
+              <svg class="thumb-moon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            </span>
+          </button>
+        </div>
+
+        <div class="settings-stack">
+          <label class="field">
+            <span>接口地址</span>
+            <input id="endpoint-input" type="url" placeholder="https://api.openai.com/v1/chat/completions" />
+          </label>
+
+          <label class="field">
+            <span>API Key</span>
+            <input id="api-key-input" type="password" placeholder="sk-..." />
+          </label>
+
+          <label class="field">
+            <span>模型名</span>
+            <input id="model-input" type="text" placeholder="gpt-4.1-mini" />
+          </label>
+
+          <div class="helper-inline">填到根路径或 `/v1` 也可以，插件会自动补全到 Chat Completions。</div>
+
+          <label class="field large-field">
+            <span>整理偏好</span>
+            <textarea id="preference-input" rows="5" placeholder="例如：工作相关靠前，阅读类折叠，娱乐类靠后。"></textarea>
+          </label>
+
+          <label class="toggle-field">
+            <input id="title-rewrite-input" type="checkbox" />
+            <span>
+              <strong>实验功能：整理后简化网页标题</strong>
+              <small>AI 重排完成后，尝试为可注入网页写入更短的临时标题。刷新页面或网站自行改标题后可能失效。</small>
+            </span>
+          </label>
+
+          <div class="button-row minimal-actions">
+            <button id="save-button" class="primary-button">保存设置</button>
+            <button id="save-run-button" class="secondary-button">保存并立即整理</button>
+          </div>
+
+          <div id="settings-status-text" class="helper-text"></div>
+        </div>
       </section>
-    </main>
-    <script src="theme.js"></script>
-    <script src="popup.js"></script>
-  </body>
-  </html>
+    </section>
+  </main>
+  <script src="theme.js"></script>
+  <script src="popup.js"></script>
+</body>
+
+</html>

@@ -79,7 +79,10 @@ async function handleRuntimeMessage(message) {
 }
 
 async function openTabSearch() {
-  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  const [[tab], tabs] = await Promise.all([
+    chrome.tabs.query({ active: true, lastFocusedWindow: true }),
+    getSearchableTabs()
+  ]);
 
   if (!tab?.id) {
     await openStandaloneSearchWindow();
@@ -91,8 +94,10 @@ async function openTabSearch() {
     return;
   }
 
+  const payload = { type: "open-tab-search", tabs };
+
   try {
-    await chrome.tabs.sendMessage(tab.id, { type: "open-tab-search" });
+    await chrome.tabs.sendMessage(tab.id, payload);
   } catch (_error) {
     try {
       await chrome.scripting.executeScript({
@@ -100,7 +105,7 @@ async function openTabSearch() {
         files: ["content.js"]
       });
 
-      await chrome.tabs.sendMessage(tab.id, { type: "open-tab-search" });
+      await chrome.tabs.sendMessage(tab.id, payload);
     } catch (_innerError) {
       await openStandaloneSearchWindow();
     }
@@ -783,7 +788,7 @@ async function ensureBookmarkFolder(name) {
 
   const folder = await chrome.bookmarks.create({
     parentId: rootId,
-    title: name || "AI Tab Organizer"
+    title: name || "Arc Tabs"
   });
 
   return folder.id;
@@ -798,7 +803,7 @@ async function ensureRootBookmarkFolder() {
   }
 
   const existing = (await chrome.bookmarks.getChildren(barNode.id)).find(
-    (node) => !node.url && node.title === "AI Tab Organizer"
+    (node) => !node.url && node.title === "Arc Tabs"
   );
 
   if (existing?.id) {
@@ -807,7 +812,7 @@ async function ensureRootBookmarkFolder() {
 
   const folder = await chrome.bookmarks.create({
     parentId: barNode.id,
-    title: "AI Tab Organizer"
+    title: "Arc Tabs"
   });
 
   return folder.id;
@@ -957,7 +962,7 @@ function deriveBatchLabel(query, tabs) {
   }
 
   const firstDomain = safeGetDomain(tabs[0]?.url || "");
-  return firstDomain || "AI Tab Organizer";
+  return firstDomain || "Arc Tabs";
 }
 
 function getCandidateTabs(tabs) {

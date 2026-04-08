@@ -53,7 +53,7 @@ async function initialize() {
 
   const input = document.createElement("input");
   input.type = "search";
-  input.placeholder = "输入关键词或自然语言搜索标签页";
+  input.placeholder = "通过关键词、网址、或一句话搜索标签";
   input.autocomplete = "off";
   input.spellcheck = false;
   input.autocapitalize = "off";
@@ -449,7 +449,7 @@ async function initialize() {
     });
 
     const title = document.createElement("div");
-    title.textContent = "面板设置";
+    title.textContent = "设置";
     setStyles(title, {
       padding: "4px 10px 0",
       fontSize: "14px",
@@ -458,7 +458,7 @@ async function initialize() {
     });
 
     const helper = document.createElement("div");
-    helper.textContent = "在这里直接调整 AI 配置。Esc 返回搜索。";
+    helper.textContent = "设置主题色、AI接口和整理偏好";
     setStyles(helper, {
       padding: "0 10px",
       fontSize: "12px",
@@ -501,7 +501,7 @@ async function initialize() {
       status.textContent = "已保存";
     });
 
-    const runButton = createToolbarButton("保存并整理", async () => {
+    const runButton = createToolbarButton("保存并立即整理标签页", async () => {
       status.textContent = "保存并开始整理…";
       await saveInlineSettings({
         endpoint: fields[0].input.value,
@@ -552,7 +552,7 @@ async function initialize() {
       maxWidth: "100%",
       minWidth: "0",
       padding: "12px 14px",
-      borderRadius: "14px",
+      borderRadius: "18px",
       cursor: "pointer",
       overflow: "hidden",
       overflowX: "hidden",
@@ -1012,7 +1012,7 @@ function buildEntries(tabs, query) {
       kind: "command",
       command: "settings",
       title: "设置",
-      subtitle: "在当前面板里打开二级设置页"
+      subtitle: "设置主题色、AI接口和整理偏好"
     });
   }
 
@@ -1025,8 +1025,8 @@ function buildEntries(tabs, query) {
       id: "command-arrange",
       kind: "command",
       command: "arrange",
-      title: "AI 重排当前窗口",
-      subtitle: "回车立即执行 AI 排序和分组"
+      title: "整理标签页",
+      subtitle: "智能整理并分组所有标签页"
     });
   }
 
@@ -1058,8 +1058,8 @@ function buildEntries(tabs, query) {
       id: `natural-${trimmed}`,
       kind: "command",
       command: "natural-search",
-      title: "自然语言搜索",
-      subtitle: "用 AI 从当前窗口里找出更符合语义的一批标签页"
+      title: "自然语言智能搜索",
+      subtitle: "“所有谷歌文档”、“3天没打开过的标签”"
     };
     const insertIndex = fallbackTarget ? entries.length : Math.min(1, entries.length);
     entries.splice(insertIndex, 0, naturalEntry);

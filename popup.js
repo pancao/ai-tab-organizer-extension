@@ -1,14 +1,10 @@
 const runButton = document.getElementById("run-button");
+const searchButton = document.getElementById("search-button");
 const settingsButton = document.getElementById("settings-button");
 const organizeShortcut = document.getElementById("organize-shortcut");
 const searchShortcut = document.getElementById("search-shortcut");
 const popupHome = document.getElementById("popup-home");
 const popupSettingsView = document.getElementById("popup-settings-view");
-const popupResultView = document.getElementById("popup-result-view");
-const viewResultButton = document.getElementById("view-result-button");
-const backButton = document.getElementById("back-button");
-const detailSummary = document.getElementById("detail-summary");
-const groupList = document.getElementById("group-list");
 
 const settingsBackButton = document.getElementById("settings-back-button");
 const modeToggle = document.getElementById("mode-toggle");
@@ -23,8 +19,6 @@ const saveRunButton = document.getElementById("save-run-button");
 const settingsStatusText = document.getElementById("settings-status-text");
 
 let pollTimer = null;
-let lastPlan = null;
-let lastSummary = "暂无结果";
 
 initialize();
 
@@ -42,6 +36,11 @@ runButton.addEventListener("click", async () => {
   } finally {
     await refreshState();
   }
+});
+
+searchButton.addEventListener("click", async () => {
+  await chrome.runtime.sendMessage({ type: "run-tab-search" });
+  window.close();
 });
 
 settingsButton.addEventListener("click", async () => {
@@ -73,8 +72,7 @@ function updateSwatchSelection(color) {
 }
 
 function updateModeToggle(mode) {
-  modeToggle.querySelector(".mode-toggle-icon").textContent = mode === "dark" ? "🌙" : "☀️";
-  modeToggle.querySelector(".mode-toggle-label").textContent = mode === "dark" ? "深色" : "浅色";
+  modeToggle.dataset.mode = mode;
 }
 
 settingsBackButton.addEventListener("click", () => {
@@ -111,18 +109,6 @@ saveRunButton.addEventListener("click", async () => {
   }
 });
 
-viewResultButton.addEventListener("click", () => {
-  if (!lastPlan) {
-    return;
-  }
-
-  showPage("result");
-});
-
-backButton.addEventListener("click", () => {
-  showPage("home");
-});
-
 async function initialize() {
   await renderShortcuts();
   await refreshState();
@@ -142,68 +128,12 @@ async function refreshState() {
     return;
   }
 
-  renderState(response.state);
-}
-
-function renderState(state) {
-  setRunBusy(Boolean(state.busy));
-  renderPlan(state.summary, state.lastPlan);
-}
-
-function renderPlan(summary, plan) {
-  lastPlan = plan || null;
-  lastSummary = summary || "暂无结果";
-  detailSummary.textContent = lastSummary;
-  viewResultButton.disabled = !plan || (!(plan.groups?.length) && !(plan.ungroupedTabIds?.length));
-  groupList.textContent = "";
-
-  if (!plan || (!plan.groups?.length && !plan.ungroupedTabIds?.length)) {
-    const empty = document.createElement("div");
-    empty.className = "empty-state";
-    empty.textContent = "还没有可查看的整理结果";
-    groupList.appendChild(empty);
-    return;
-  }
-
-  (plan.groups || []).forEach((group) => {
-    const item = document.createElement("div");
-    item.className = "group-item";
-
-    const name = document.createElement("div");
-    name.className = "group-name";
-    name.textContent = group.name;
-
-    const meta = document.createElement("div");
-    meta.className = "group-meta";
-    meta.textContent = `${group.tabIds.length} 个标签页`;
-
-    item.appendChild(name);
-    item.appendChild(meta);
-    groupList.appendChild(item);
-  });
-
-  if (plan.ungroupedTabIds?.length) {
-    const item = document.createElement("div");
-    item.className = "group-item";
-
-    const name = document.createElement("div");
-    name.className = "group-name";
-    name.textContent = "未分组";
-
-    const meta = document.createElement("div");
-    meta.className = "group-meta";
-    meta.textContent = `${plan.ungroupedTabIds.length} 个标签页`;
-
-    item.appendChild(name);
-    item.appendChild(meta);
-    groupList.appendChild(item);
-  }
+  setRunBusy(Boolean(response.state.busy));
 }
 
 function showPage(page) {
   popupHome.classList.toggle("hidden", page !== "home");
   popupSettingsView.classList.toggle("hidden", page !== "settings");
-  popupResultView.classList.toggle("hidden", page !== "result");
 }
 
 function setRunBusy(busy) {

@@ -1,8 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "AI Tab Organizer",
+  "name": "Arc Tabs",
   "version": "1.0.0",
   "description": "Use AI to sort tabs in the current window and group related work together.",
+  "icons": {
+    "16": "Arc Tabs.png",
+    "32": "Arc Tabs.png",
+    "48": "Arc Tabs.png",
+    "128": "Arc Tabs.png"
+  },
   "permissions": [
     "bookmarks",
     "search",
@@ -30,8 +36,20 @@
     }
   ],
   "action": {
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "Arc Tabs.png",
+      "32": "Arc Tabs.png",
+      "48": "Arc Tabs.png",
+      "128": "Arc Tabs.png"
+    }
   },
+  "web_accessible_resources": [
+    {
+      "resources": ["inter.ttf"],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "options_page": "options.html",
   "commands": {
     "organize-tabs-ai": {

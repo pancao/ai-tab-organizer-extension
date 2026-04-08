@@ -35,8 +35,7 @@ function updateSwatchSelection(color) {
 }
 
 function updateModeToggle(mode) {
-  modeToggle.querySelector(".mode-toggle-icon").textContent = mode === "dark" ? "🌙" : "☀️";
-  modeToggle.querySelector(".mode-toggle-label").textContent = mode === "dark" ? "深色" : "浅色";
+  modeToggle.dataset.mode = mode;
 }
 
 saveButton.addEventListener("click", async () => {

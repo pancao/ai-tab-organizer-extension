@@ -1,18 +1,32 @@
 const OVERLAY_ID = "__ai_tab_organizer_search_overlay__";
 const ACTIONS = ["open", "close", "bookmark_close"];
 const NATURAL_BATCH_ACTIONS = [
-  { action: "bookmark_close", label: "关闭并加入收藏" },
-  { action: "delete", label: "关闭搜索到的Tab" },
+  { action: "bookmark_close", label: "关闭全部并收藏" },
+  { action: "delete", label: "关闭所有" },
   { action: "group", label: "新建分组" }
 ];
-const UI_FONT_FAMILY = "sans-serif";
+const UI_FONT_FAMILY = '"Inter", sans-serif';
+
+const _ic = (d) => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto">${d}</svg>`;
+const BUTTON_ICONS = {
+  "整理标签页": _ic('<path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2 19 5"/><path d="m3 21 9-9"/><path d="M12.2 6.2 11 5"/>'),
+  "设置": _ic('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'),
+  "打开": _ic('<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>'),
+  "关闭": _ic('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'),
+  "收藏后关闭": _ic('<path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>'),
+  "关闭全部并收藏": _ic('<path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>'),
+  "关闭所有": _ic('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'),
+  "新建分组": _ic('<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/>'),
+  "保存设置": _ic('<polyline points="20 6 9 17 4 12"/>'),
+  "保存并立即整理标签页": _ic('<path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2 19 5"/><path d="m3 21 9-9"/><path d="M12.2 6.2 11 5"/>'),
+};
 
 const THEME_COLORS_CONFIG = {
-  neutral: { accent: "#1f1f1c", light: { page: "#f6f6f4", surface: "rgba(255,255,255,0.72)", inputBg: "rgba(255,255,255,0.82)", border: "rgba(15,23,42,0.12)", text: "#0f172a", muted: "rgba(15,23,42,0.56)", subtleBg: "rgba(15,23,42,0.07)", hoverBg: "rgba(15,23,42,0.07)", selectedBg: "rgba(15,23,42,0.13)", overlayBg: "rgba(15,23,42,0.16)", commandBg: "rgba(37,99,235,0.08)", commandText: "#1d4ed8", commandMuted: "rgba(29,78,216,0.78)", urlShadow: "rgba(37,99,235,0.10)" }, dark: { page: "#1a1a1a", surface: "rgba(30,30,30,0.88)", inputBg: "rgba(40,40,40,0.82)", border: "rgba(255,255,255,0.12)", text: "#e5e5e5", muted: "rgba(255,255,255,0.50)", subtleBg: "rgba(255,255,255,0.07)", hoverBg: "rgba(255,255,255,0.07)", selectedBg: "rgba(255,255,255,0.18)", overlayBg: "rgba(0,0,0,0.50)", commandBg: "rgba(96,165,250,0.10)", commandText: "#93bbfd", commandMuted: "rgba(147,187,253,0.78)", urlShadow: "rgba(96,165,250,0.10)" } },
-  blue: { accent: "#2563eb", light: { page: "#f0f4ff", surface: "rgba(240,245,255,0.82)", inputBg: "rgba(255,255,255,0.82)", border: "rgba(37,99,235,0.14)", text: "#0f172a", muted: "rgba(37,99,235,0.50)", subtleBg: "rgba(37,99,235,0.07)", hoverBg: "rgba(37,99,235,0.07)", selectedBg: "rgba(37,99,235,0.20)", overlayBg: "rgba(16,24,40,0.18)", commandBg: "rgba(37,99,235,0.10)", commandText: "#1d4ed8", commandMuted: "rgba(29,78,216,0.78)", urlShadow: "rgba(37,99,235,0.12)" }, dark: { page: "#101828", surface: "rgba(26,37,64,0.88)", inputBg: "rgba(30,42,72,0.82)", border: "rgba(96,165,250,0.16)", text: "#e5e5e5", muted: "rgba(147,187,253,0.55)", subtleBg: "rgba(96,165,250,0.08)", hoverBg: "rgba(96,165,250,0.08)", selectedBg: "rgba(96,165,250,0.26)", overlayBg: "rgba(0,0,0,0.50)", commandBg: "rgba(96,165,250,0.12)", commandText: "#93bbfd", commandMuted: "rgba(147,187,253,0.78)", urlShadow: "rgba(96,165,250,0.10)" } },
-  green: { accent: "#16a34a", light: { page: "#eefbf2", surface: "rgba(238,251,242,0.82)", inputBg: "rgba(255,255,255,0.82)", border: "rgba(22,163,74,0.14)", text: "#0f172a", muted: "rgba(22,163,74,0.52)", subtleBg: "rgba(22,163,74,0.07)", hoverBg: "rgba(22,163,74,0.07)", selectedBg: "rgba(22,163,74,0.20)", overlayBg: "rgba(14,31,20,0.18)", commandBg: "rgba(22,163,74,0.10)", commandText: "#15803d", commandMuted: "rgba(21,128,61,0.78)", urlShadow: "rgba(22,163,74,0.12)" }, dark: { page: "#0e1f14", surface: "rgba(21,42,28,0.88)", inputBg: "rgba(26,48,34,0.82)", border: "rgba(74,222,128,0.14)", text: "#e5e5e5", muted: "rgba(134,239,172,0.55)", subtleBg: "rgba(74,222,128,0.08)", hoverBg: "rgba(74,222,128,0.08)", selectedBg: "rgba(74,222,128,0.24)", overlayBg: "rgba(0,0,0,0.50)", commandBg: "rgba(74,222,128,0.10)", commandText: "#86efac", commandMuted: "rgba(134,239,172,0.78)", urlShadow: "rgba(74,222,128,0.10)" } },
-  purple: { accent: "#7c3aed", light: { page: "#f5f0ff", surface: "rgba(245,240,255,0.82)", inputBg: "rgba(255,255,255,0.82)", border: "rgba(124,58,237,0.14)", text: "#0f172a", muted: "rgba(124,58,237,0.50)", subtleBg: "rgba(124,58,237,0.07)", hoverBg: "rgba(124,58,237,0.07)", selectedBg: "rgba(124,58,237,0.20)", overlayBg: "rgba(24,16,42,0.18)", commandBg: "rgba(124,58,237,0.10)", commandText: "#6d28d9", commandMuted: "rgba(109,40,217,0.78)", urlShadow: "rgba(124,58,237,0.12)" }, dark: { page: "#18102a", surface: "rgba(34,24,64,0.88)", inputBg: "rgba(40,30,72,0.82)", border: "rgba(167,139,250,0.16)", text: "#e5e5e5", muted: "rgba(196,181,253,0.55)", subtleBg: "rgba(167,139,250,0.08)", hoverBg: "rgba(167,139,250,0.08)", selectedBg: "rgba(167,139,250,0.26)", overlayBg: "rgba(0,0,0,0.50)", commandBg: "rgba(167,139,250,0.12)", commandText: "#c4b5fd", commandMuted: "rgba(196,181,253,0.78)", urlShadow: "rgba(167,139,250,0.10)" } },
-  orange: { accent: "#ea580c", light: { page: "#fff6ed", surface: "rgba(255,246,237,0.82)", inputBg: "rgba(255,255,255,0.82)", border: "rgba(234,88,12,0.14)", text: "#0f172a", muted: "rgba(234,88,12,0.50)", subtleBg: "rgba(234,88,12,0.07)", hoverBg: "rgba(234,88,12,0.07)", selectedBg: "rgba(234,88,12,0.20)", overlayBg: "rgba(31,18,8,0.18)", commandBg: "rgba(234,88,12,0.10)", commandText: "#c2410c", commandMuted: "rgba(194,65,12,0.78)", urlShadow: "rgba(234,88,12,0.12)" }, dark: { page: "#1f1208", surface: "rgba(42,26,16,0.88)", inputBg: "rgba(48,32,21,0.82)", border: "rgba(251,146,60,0.16)", text: "#e5e5e5", muted: "rgba(253,186,116,0.55)", subtleBg: "rgba(251,146,60,0.08)", hoverBg: "rgba(251,146,60,0.08)", selectedBg: "rgba(251,146,60,0.26)", overlayBg: "rgba(0,0,0,0.50)", commandBg: "rgba(251,146,60,0.12)", commandText: "#fdba74", commandMuted: "rgba(253,186,116,0.78)", urlShadow: "rgba(251,146,60,0.10)" } }
+  neutral: { accent: "#1f1f1c", light: { page: "#f6f6f4", surface: "rgba(255,255,255,0.72)", inputBg: "rgba(255,255,255,0.82)", border: "rgba(15,23,42,0.12)", text: "#0f172a", muted: "rgba(15,23,42,0.56)", subtleBg: "rgba(15,23,42,0.07)", hoverBg: "rgba(15,23,42,0.18)", selectedBg: "rgba(15,23,42,0.13)", overlayBg: "rgba(15,23,42,0.16)", commandBg: "rgba(37,99,235,0.08)", commandText: "#1d4ed8", commandMuted: "rgba(29,78,216,0.78)", urlShadow: "rgba(37,99,235,0.10)" }, dark: { page: "#1a1a1a", surface: "rgba(30,30,30,0.88)", inputBg: "rgba(40,40,40,0.82)", border: "rgba(255,255,255,0.12)", text: "#e5e5e5", muted: "rgba(255,255,255,0.50)", subtleBg: "rgba(255,255,255,0.07)", hoverBg: "rgba(255,255,255,0.22)", selectedBg: "rgba(255,255,255,0.18)", overlayBg: "rgba(0,0,0,0.50)", commandBg: "rgba(96,165,250,0.10)", commandText: "#93bbfd", commandMuted: "rgba(147,187,253,0.78)", urlShadow: "rgba(96,165,250,0.10)" } },
+  blue: { accent: "#2563eb", light: { page: "#f0f4ff", surface: "rgba(240,245,255,0.82)", inputBg: "rgba(255,255,255,0.82)", border: "rgba(37,99,235,0.14)", text: "#0f172a", muted: "rgba(37,99,235,0.50)", subtleBg: "rgba(37,99,235,0.07)", hoverBg: "rgba(37,99,235,0.20)", selectedBg: "rgba(37,99,235,0.20)", overlayBg: "rgba(16,24,40,0.18)", commandBg: "rgba(37,99,235,0.10)", commandText: "#1d4ed8", commandMuted: "rgba(29,78,216,0.78)", urlShadow: "rgba(37,99,235,0.12)" }, dark: { page: "#101828", surface: "rgba(26,37,64,0.88)", inputBg: "rgba(30,42,72,0.82)", border: "rgba(96,165,250,0.16)", text: "#e5e5e5", muted: "rgba(147,187,253,0.55)", subtleBg: "rgba(96,165,250,0.08)", hoverBg: "rgba(96,165,250,0.26)", selectedBg: "rgba(96,165,250,0.26)", overlayBg: "rgba(0,0,0,0.50)", commandBg: "rgba(96,165,250,0.12)", commandText: "#93bbfd", commandMuted: "rgba(147,187,253,0.78)", urlShadow: "rgba(96,165,250,0.10)" } },
+  green: { accent: "#16a34a", light: { page: "#eefbf2", surface: "rgba(238,251,242,0.82)", inputBg: "rgba(255,255,255,0.82)", border: "rgba(22,163,74,0.14)", text: "#0f172a", muted: "rgba(22,163,74,0.52)", subtleBg: "rgba(22,163,74,0.07)", hoverBg: "rgba(22,163,74,0.20)", selectedBg: "rgba(22,163,74,0.20)", overlayBg: "rgba(14,31,20,0.18)", commandBg: "rgba(22,163,74,0.10)", commandText: "#15803d", commandMuted: "rgba(21,128,61,0.78)", urlShadow: "rgba(22,163,74,0.12)" }, dark: { page: "#0e1f14", surface: "rgba(21,42,28,0.88)", inputBg: "rgba(26,48,34,0.82)", border: "rgba(74,222,128,0.14)", text: "#e5e5e5", muted: "rgba(134,239,172,0.55)", subtleBg: "rgba(74,222,128,0.08)", hoverBg: "rgba(74,222,128,0.26)", selectedBg: "rgba(74,222,128,0.24)", overlayBg: "rgba(0,0,0,0.50)", commandBg: "rgba(74,222,128,0.10)", commandText: "#86efac", commandMuted: "rgba(134,239,172,0.78)", urlShadow: "rgba(74,222,128,0.10)" } },
+  purple: { accent: "#7c3aed", light: { page: "#f5f0ff", surface: "rgba(245,240,255,0.82)", inputBg: "rgba(255,255,255,0.82)", border: "rgba(124,58,237,0.14)", text: "#0f172a", muted: "rgba(124,58,237,0.50)", subtleBg: "rgba(124,58,237,0.07)", hoverBg: "rgba(124,58,237,0.20)", selectedBg: "rgba(124,58,237,0.20)", overlayBg: "rgba(24,16,42,0.18)", commandBg: "rgba(124,58,237,0.10)", commandText: "#6d28d9", commandMuted: "rgba(109,40,217,0.78)", urlShadow: "rgba(124,58,237,0.12)" }, dark: { page: "#18102a", surface: "rgba(34,24,64,0.88)", inputBg: "rgba(40,30,72,0.82)", border: "rgba(167,139,250,0.16)", text: "#e5e5e5", muted: "rgba(196,181,253,0.55)", subtleBg: "rgba(167,139,250,0.08)", hoverBg: "rgba(167,139,250,0.26)", selectedBg: "rgba(167,139,250,0.26)", overlayBg: "rgba(0,0,0,0.50)", commandBg: "rgba(167,139,250,0.12)", commandText: "#c4b5fd", commandMuted: "rgba(196,181,253,0.78)", urlShadow: "rgba(167,139,250,0.10)" } },
+  orange: { accent: "#ea580c", light: { page: "#fff6ed", surface: "rgba(255,246,237,0.82)", inputBg: "rgba(255,255,255,0.82)", border: "rgba(234,88,12,0.14)", text: "#0f172a", muted: "rgba(234,88,12,0.50)", subtleBg: "rgba(234,88,12,0.07)", hoverBg: "rgba(234,88,12,0.20)", selectedBg: "rgba(234,88,12,0.20)", overlayBg: "rgba(31,18,8,0.18)", commandBg: "rgba(234,88,12,0.10)", commandText: "#c2410c", commandMuted: "rgba(194,65,12,0.78)", urlShadow: "rgba(234,88,12,0.12)" }, dark: { page: "#1f1208", surface: "rgba(42,26,16,0.88)", inputBg: "rgba(48,32,21,0.82)", border: "rgba(251,146,60,0.16)", text: "#e5e5e5", muted: "rgba(253,186,116,0.55)", subtleBg: "rgba(251,146,60,0.08)", hoverBg: "rgba(251,146,60,0.26)", selectedBg: "rgba(251,146,60,0.26)", overlayBg: "rgba(0,0,0,0.50)", commandBg: "rgba(251,146,60,0.12)", commandText: "#fdba74", commandMuted: "rgba(253,186,116,0.78)", urlShadow: "rgba(251,146,60,0.10)" } }
 };
 
 const THEME_SWATCH_COLORS = [
@@ -33,12 +47,12 @@ async function getThemeTokens() {
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === "open-tab-search") {
-    openTabSearch();
+    openTabSearch(message.tabs);
     sendResponse({ ok: true });
   }
 });
 
-async function openTabSearch() {
+async function openTabSearch(prefetchedTabs) {
   const existing = document.getElementById(OVERLAY_ID);
 
   if (existing) {
@@ -46,13 +60,22 @@ async function openTabSearch() {
     return;
   }
 
-  const response = await chrome.runtime.sendMessage({ type: "get-tabs" });
+  let tabs;
+  let theme;
 
-  if (!response?.ok) {
-    return;
+  if (prefetchedTabs) {
+    tabs = prefetchedTabs;
+    theme = await getThemeTokens();
+  } else {
+    const [response, theme0] = await Promise.all([
+      chrome.runtime.sendMessage({ type: "get-tabs" }),
+      getThemeTokens()
+    ]);
+    if (!response?.ok) return;
+    tabs = response.tabs || [];
+    theme = theme0;
   }
 
-  let tabs = response.tabs || [];
   let entries = [];
   let selectedIndex = -1;
   let selectedAction = null;
@@ -65,7 +88,6 @@ async function openTabSearch() {
   let naturalPreview = null;
   let isNaturalLoading = false;
 
-  let theme = await getThemeTokens();
   let t = theme.tokens;
 
   async function reloadTheme() {
@@ -92,6 +114,7 @@ async function openTabSearch() {
 
   const panel = document.createElement("div");
   setStyles(panel, {
+    position: "relative",
     width: "min(700px, calc(100vw - 32px))",
     maxWidth: "700px",
     maxHeight: "72vh",
@@ -114,13 +137,22 @@ async function openTabSearch() {
     display: "flex",
     alignItems: "center",
     gap: "10px",
-    padding: "16px 16px 0",
+    padding: "16px 16px 8px",
     minWidth: "0"
   });
 
+  const inputWrapper = document.createElement("div");
+  setStyles(inputWrapper, {
+    flex: "1 1 auto",
+    minWidth: "0",
+    position: "relative",
+    display: "flex",
+    alignItems: "center"
+  });
+
   const input = document.createElement("input");
-  input.type = "search";
-  input.placeholder = "输入关键词或自然语言搜索标签页";
+  input.type = "text";
+  input.placeholder = "通过关键词、网址、或一句话搜索标签";
   input.autocomplete = "off";
   input.spellcheck = false;
   input.autocapitalize = "off";
@@ -137,44 +169,67 @@ async function openTabSearch() {
     border: "0",
     outline: "none",
     background: "transparent",
-    padding: "12px 14px",
+    padding: "12px 36px 12px 14px",
     fontSize: "18px",
     color: t.text,
     fontFamily: UI_FONT_FAMILY
   });
 
-  const arrangeButton = createToolbarButton("整理Tab", async () => {
+  const clearButton = document.createElement("button");
+  clearButton.type = "button";
+  clearButton.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  setStyles(clearButton, {
+    position: "absolute",
+    right: "8px",
+    display: "none",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "22px",
+    height: "22px",
+    border: "0",
+    borderRadius: "50%",
+    background: t.subtleBg,
+    color: t.muted,
+    cursor: "pointer",
+    padding: "0",
+    flex: "0 0 auto"
+  });
+  clearButton.addEventListener("click", () => {
+    input.value = "";
+    input.dispatchEvent(new Event("input"));
+    input.focus();
+  });
+
+  inputWrapper.appendChild(input);
+  inputWrapper.appendChild(clearButton);
+
+  const arrangeButton = createToolbarButton("整理标签页", async () => {
     setToolbarButtonBusy(arrangeButton, true, "整理中…");
 
     try {
       await chrome.runtime.sendMessage({ type: "run-ai-organization" });
       close();
     } finally {
-      setToolbarButtonBusy(arrangeButton, false, "整理Tab");
+      setToolbarButtonBusy(arrangeButton, false, "整理标签页");
     }
   }, t);
 
   const settingsButton = createToolbarButton("设置", async () => {
     await enterSettingsView();
   }, t);
+  settingsButton.innerHTML = BUTTON_ICONS["设置"];
+  settingsButton.title = "设置";
+  setStyles(settingsButton, { padding: "10px" });
 
   const headerButtons = [arrangeButton, settingsButton];
 
-  toolbar.appendChild(input);
+  toolbar.appendChild(inputWrapper);
   toolbar.appendChild(arrangeButton);
   toolbar.appendChild(settingsButton);
 
-  const hint = document.createElement("div");
-  setStyles(hint, {
-    padding: "8px 22px 12px",
-    color: t.muted,
-    fontSize: "12px",
-    fontFamily: UI_FONT_FAMILY
-  });
-
   const list = document.createElement("div");
   setStyles(list, {
-    padding: "0 10px 10px",
+    padding: "0 8px 10px 10px",
     flex: "1 1 auto",
     minHeight: "0",
     overflowY: "auto",
@@ -190,16 +245,26 @@ async function openTabSearch() {
   const footer = document.createElement("div");
   setStyles(footer, {
     display: "none",
+    position: "absolute",
+    bottom: "0",
+    left: "0",
+    right: "0",
     alignItems: "center",
     gap: "8px",
-    padding: "0 16px 16px",
+    padding: "12px 16px 16px",
     minWidth: "0",
     overflowX: "auto",
-    overflowY: "hidden"
+    overflowY: "hidden",
+    background: t.surface,
+    backdropFilter: "blur(12px)",
+    webkitBackdropFilter: "blur(12px)",
+    borderTop: `1px solid ${t.border}`
   });
 
+  const placeholderStyle = document.createElement("style");
+  placeholderStyle.textContent = `#${OVERLAY_ID} input::placeholder { color: ${t.commandText}; opacity: 0.45; }`;
+  panel.appendChild(placeholderStyle);
   panel.appendChild(toolbar);
-  panel.appendChild(hint);
   panel.appendChild(list);
   panel.appendChild(footer);
   overlay.appendChild(panel);
@@ -215,6 +280,8 @@ async function openTabSearch() {
   });
 
   input.addEventListener("input", () => {
+    clearButton.style.display = input.value ? "flex" : "none";
+
     searchMode = "default";
     naturalPreview = null;
     headerFocusIndex = -1;
@@ -222,7 +289,7 @@ async function openTabSearch() {
     selectedIndex = -1;
     selectedAction = null;
     hoveredIndex = null;
-    updateHint();
+
     rebuildRows();
 
     if (input.value.trim() && entries.length > 0) {
@@ -245,7 +312,7 @@ async function openTabSearch() {
         selectedIndex = -1;
         selectedAction = null;
         hoveredIndex = null;
-        updateHint();
+
         rebuildRows();
         return;
       }
@@ -514,7 +581,7 @@ async function openTabSearch() {
     selectedIndex = -1;
     selectedAction = null;
     hoveredIndex = null;
-    updateHint();
+
     renderFooter();
     renderSettingsView();
   }
@@ -534,16 +601,16 @@ async function openTabSearch() {
     });
 
     const title = document.createElement("div");
-    title.textContent = "面板设置";
+    title.textContent = "设置";
     setStyles(title, {
       padding: "4px 10px 0",
       fontSize: "14px",
       fontWeight: "700",
-      color: t.text
+      color: theme.accent
     });
 
     const helper = document.createElement("div");
-    helper.textContent = "在这里直接调整 AI 配置。Esc 返回搜索。";
+    helper.textContent = "设置主题色、AI接口和整理偏好";
     setStyles(helper, {
       padding: "0 10px",
       fontSize: "12px",
@@ -575,7 +642,7 @@ async function openTabSearch() {
       createSettingsField("模型名", "text", "gpt-4.1-mini", t)
     ];
     const preferenceField = createSettingsTextarea("整理偏好", "例如：工作相关靠前，阅读类折叠，娱乐类靠后。", t);
-    const toggleField = createSettingsToggle("实验功能：整理后简化网页标题", "整理后尝试为可注入网页写入更短的临时标题。", t);
+    const toggleField = createSettingsToggle("实验功能：整理后简化网页标题", "整理后尝试为可注入网页写入更短的临时标题。", t, theme.accent);
 
     const actionRow = document.createElement("div");
     setStyles(actionRow, {
@@ -597,7 +664,7 @@ async function openTabSearch() {
       status.textContent = "已保存";
     }, t);
 
-    const runButton = createToolbarButton("保存并整理", async () => {
+    const runButton = createToolbarButton("保存并立即整理标签页", async () => {
       status.textContent = "保存并开始整理…";
       await saveInlineSettings({
         endpoint: fields[0].input.value,
@@ -649,7 +716,7 @@ async function openTabSearch() {
       maxWidth: "100%",
       minWidth: "0",
       padding: "12px 14px",
-      borderRadius: "14px",
+      borderRadius: "18px",
       cursor: "pointer",
       overflow: "hidden",
       overflowX: "hidden",
@@ -675,11 +742,29 @@ async function openTabSearch() {
       height: "18px",
       borderRadius: "6px",
       flex: "0 0 auto",
-      background: entry.kind === "command" ? t.commandBg : t.subtleBg,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      background: (entry.kind === "command" || entry.kind === "url") ? t.commandBg : t.subtleBg,
       backgroundImage: entry.kind === "tab" && entry.favIconUrl ? `url("${entry.favIconUrl}")` : "",
       backgroundSize: "cover",
-      backgroundPosition: "center"
+      backgroundPosition: "center",
+      color: t.commandText
     });
+    if (entry.kind === "url") {
+      const urlSvg = entry.isSearch
+        ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
+        : '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
+      icon.innerHTML = urlSvg;
+    }
+    if (entry.kind === "command") {
+      const COMMAND_ICONS = {
+        "settings": '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+        "arrange": '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2 19 5"/><path d="m3 21 9-9"/><path d="M12.2 6.2 11 5"/></svg>',
+        "natural-search": '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>'
+      };
+      icon.innerHTML = COMMAND_ICONS[entry.command] || "";
+    }
 
     const meta = document.createElement("div");
     setStyles(meta, {
@@ -799,7 +884,7 @@ async function openTabSearch() {
         event.stopPropagation();
         await executeEntryAction(entry, "close");
       }, t),
-      bookmark_close: createActionButton("收藏并关闭", async (event) => {
+      bookmark_close: createActionButton("收藏后关闭", async (event) => {
         event.stopPropagation();
         await executeEntryAction(entry, "bookmark_close");
       }, t)
@@ -817,7 +902,10 @@ async function openTabSearch() {
     panel.style.background = t.surface;
     panel.style.borderColor = t.border;
     input.style.color = t.text;
-    hint.style.color = t.muted;
+    clearButton.style.background = t.subtleBg;
+    clearButton.style.color = t.muted;
+    footer.style.background = t.surface;
+    footer.style.borderTopColor = t.border;
     updateInteractiveState();
   }
 
@@ -826,7 +914,7 @@ async function openTabSearch() {
       const selected = headerFocusIndex === index;
       button.dataset.selected = selected ? "true" : "false";
       button.style.background = selected ? theme.accent : t.subtleBg;
-      button.style.color = selected ? "#fff" : t.text;
+      button.style.color = selected ? "#fff" : t.commandText;
     });
 
     rowNodes.forEach((row, index) => {
@@ -839,7 +927,7 @@ async function openTabSearch() {
       item.style.background = isKeyboardSelected
         ? t.selectedBg
         : isHovered
-          ? t.hoverBg
+          ? t.subtleBg
           : isCommand
             ? t.commandBg
             : "transparent";
@@ -862,7 +950,7 @@ async function openTabSearch() {
       const selected = footerFocusIndex === index;
       button.dataset.selected = selected ? "true" : "false";
       button.style.background = selected ? theme.accent : t.subtleBg;
-      button.style.color = selected ? "#ffffff" : t.text;
+      button.style.color = selected ? "#ffffff" : t.commandText;
 
       if (selected) {
         button.scrollIntoView({ block: "nearest", inline: "nearest" });
@@ -891,7 +979,6 @@ async function openTabSearch() {
       const response = await chrome.runtime.sendMessage({ type: "open-url", url: entry.url });
 
       if (!response?.ok) {
-        hint.textContent = response?.error || "打开失败";
         return;
       }
 
@@ -940,7 +1027,6 @@ async function openTabSearch() {
     selectedIndex = -1;
     selectedAction = null;
     hoveredIndex = null;
-    updateHint();
     rebuildRows();
 
     const response = await chrome.runtime.sendMessage({ type: "preview-batch-tabs", query });
@@ -948,7 +1034,6 @@ async function openTabSearch() {
 
     if (!response?.ok) {
       searchMode = "default";
-      hint.textContent = response?.error || "自然语言搜索失败";
       rebuildRows();
       return;
     }
@@ -959,29 +1044,7 @@ async function openTabSearch() {
     selectedIndex = -1;
     selectedAction = null;
     hoveredIndex = null;
-    updateHint();
     rebuildRows();
-  }
-
-  function updateHint() {
-    if (isNaturalLoading) {
-      hint.textContent = "自然语言搜索中…";
-      return;
-    }
-
-    if (searchMode === "natural") {
-      hint.textContent = naturalPreview?.rationale
-        ? `自然语言结果：${naturalPreview.rationale} · Esc 返回普通搜索`
-        : "自然语言结果 · Esc 返回普通搜索";
-      return;
-    }
-
-    if (searchMode === "settings") {
-      hint.textContent = "设置视图 · Esc 返回普通搜索";
-      return;
-    }
-
-    hint.textContent = "方向键选择结果，左右方向键切换动作，回车确认";
   }
 
   function renderFooter() {
@@ -990,10 +1053,12 @@ async function openTabSearch() {
 
     if (!hasNaturalBatchActions()) {
       footer.style.display = "none";
+      list.style.paddingBottom = "10px";
       return;
     }
 
     footer.style.display = "flex";
+    list.style.paddingBottom = "80px";
 
     NATURAL_BATCH_ACTIONS.forEach((definition, index) => {
       const button = createToolbarButton(definition.label, async () => {
@@ -1037,23 +1102,24 @@ async function openTabSearch() {
   }
 
   rebuildRows();
-  updateHint();
   input.focus();
 }
 
 ensureSpinnerStyle();
 
 function createActionButton(label, onClick, tokens) {
-  const fg = (tokens && tokens.text) || "#0f172a";
+  const fg = (tokens && tokens.commandText) || "#1d4ed8";
   const bg = (tokens && tokens.subtleBg) || "rgba(15, 23, 42, 0.08)";
   const hoverBg = (tokens && tokens.hoverBg) || "rgba(15, 23, 42, 0.14)";
   const button = document.createElement("button");
   button.type = "button";
-  button.textContent = label;
+  const icon = BUTTON_ICONS[label] || "";
+  button.innerHTML = icon + `<span>${label}</span>`;
   setStyles(button, {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
+    gap: "5px",
     border: "0",
     borderRadius: "10px",
     padding: "7px 10px",
@@ -1084,17 +1150,19 @@ function createActionButton(label, onClick, tokens) {
 }
 
 function createToolbarButton(label, onClick, tokens) {
-  const fg = (tokens && tokens.text) || "#0f172a";
+  const fg = (tokens && tokens.commandText) || "#1d4ed8";
   const bg = (tokens && tokens.subtleBg) || "rgba(15, 23, 42, 0.08)";
   const hoverBg = (tokens && tokens.hoverBg) || "rgba(15, 23, 42, 0.14)";
   const button = document.createElement("button");
   button.type = "button";
-  button.textContent = label;
+  const icon = BUTTON_ICONS[label] || "";
+  button.innerHTML = icon + `<span>${label}</span>`;
   button.dataset.label = label;
   setStyles(button, {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
+    gap: "5px",
     border: "0",
     borderRadius: "999px",
     cornerShape: "superellipse(2.1)",
@@ -1125,14 +1193,16 @@ function createToolbarButton(label, onClick, tokens) {
 
 function setToolbarButtonBusy(button, busy, busyLabel) {
   button.disabled = busy;
-  button.textContent = busy ? busyLabel : button.dataset.label || "";
+  const displayLabel = busy ? busyLabel : button.dataset.label || "";
+  const icon = BUTTON_ICONS[button.dataset.label] || "";
+  button.innerHTML = icon + `<span>${displayLabel}</span>`;
   button.style.opacity = busy ? "0.72" : "1";
   button.style.cursor = busy ? "default" : "pointer";
 }
 
 function updateActionSelection(buttons, selectedAction, accent, tokens) {
   const bg = (tokens && tokens.subtleBg) || "rgba(15, 23, 42, 0.08)";
-  const fg = (tokens && tokens.text) || "#0f172a";
+  const fg = (tokens && tokens.commandText) || "#1d4ed8";
   const ac = accent || "#2563eb";
   Object.entries(buttons).forEach(([action, button]) => {
     const isSelected = selectedAction === action;
@@ -1154,7 +1224,7 @@ function buildEntries(tabs, query) {
       kind: "command",
       command: "settings",
       title: "设置",
-      subtitle: "在当前面板里打开二级设置页"
+      subtitle: "设置主题色、AI接口和整理偏好"
     });
   }
 
@@ -1167,8 +1237,8 @@ function buildEntries(tabs, query) {
       id: "command-arrange",
       kind: "command",
       command: "arrange",
-      title: "AI 重排当前窗口",
-      subtitle: "回车立即执行 AI 排序和分组"
+      title: "整理标签页",
+      subtitle: "智能整理并分组所有标签页"
     });
   }
 
@@ -1192,7 +1262,8 @@ function buildEntries(tabs, query) {
       kind: "url",
       url: fallbackTarget.value,
       title: fallbackTarget.title,
-      subtitle: fallbackTarget.subtitle
+      subtitle: fallbackTarget.subtitle,
+      isSearch: fallbackTarget.title === "搜索"
     });
   }
 
@@ -1201,8 +1272,8 @@ function buildEntries(tabs, query) {
       id: `natural-${trimmed}`,
       kind: "command",
       command: "natural-search",
-      title: "自然语言搜索",
-      subtitle: "用 AI 从当前窗口里找出更符合语义的一批标签页"
+      title: "自然语言智能搜索",
+      subtitle: "“所有谷歌文档”、“3天没打开过的标签”"
     };
     const insertIndex = fallbackTarget ? entries.length : Math.min(1, entries.length);
     entries.splice(insertIndex, 0, naturalEntry);
@@ -1299,8 +1370,10 @@ function isCaretAtEnd(input) {
 
 function createSettingsField(label, type, placeholder, tokens) {
   const fg = (tokens && tokens.text) || "#0f172a";
-  const inputBg = (tokens && tokens.inputBg) || "rgba(255, 255, 255, 0.82)";
-  const borderC = (tokens && tokens.border) || "rgba(15, 23, 42, 0.12)";
+  const inputBg = (tokens && tokens.inputBg) || "rgba(255, 255, 255, 0.42)";
+  const borderC = (tokens && tokens.border) || "rgba(15, 23, 42, 0.10)";
+  const settingsInputBg = inputBg.replace(/[\d.]+\)$/, "0.42)");
+  const settingsBorderC = borderC.replace(/[\d.]+\)$/, "0.10)");
   const wrapper = document.createElement("label");
   setStyles(wrapper, {
     display: "flex",
@@ -1313,17 +1386,18 @@ function createSettingsField(label, type, placeholder, tokens) {
 
   const text = document.createElement("span");
   text.textContent = label;
+  setStyles(text, { fontWeight: "700" });
 
   const input = document.createElement("input");
   input.type = type;
   input.placeholder = placeholder;
   setStyles(input, {
     width: "100%",
-    border: `1px solid ${borderC}`,
+    border: `1px solid ${settingsBorderC}`,
     borderRadius: "12px",
     padding: "10px 12px",
     outline: "none",
-    background: inputBg,
+    background: settingsInputBg,
     color: fg,
     fontSize: "13px"
   });
@@ -1335,8 +1409,10 @@ function createSettingsField(label, type, placeholder, tokens) {
 
 function createSettingsTextarea(label, placeholder, tokens) {
   const fg = (tokens && tokens.text) || "#0f172a";
-  const inputBg = (tokens && tokens.inputBg) || "rgba(255, 255, 255, 0.82)";
-  const borderC = (tokens && tokens.border) || "rgba(15, 23, 42, 0.12)";
+  const inputBg = (tokens && tokens.inputBg) || "rgba(255, 255, 255, 0.42)";
+  const borderC = (tokens && tokens.border) || "rgba(15, 23, 42, 0.10)";
+  const settingsInputBg = inputBg.replace(/[\d.]+\)$/, "0.42)");
+  const settingsBorderC = borderC.replace(/[\d.]+\)$/, "0.10)");
   const wrapper = document.createElement("label");
   setStyles(wrapper, {
     display: "flex",
@@ -1349,17 +1425,18 @@ function createSettingsTextarea(label, placeholder, tokens) {
 
   const text = document.createElement("span");
   text.textContent = label;
+  setStyles(text, { fontWeight: "700" });
 
   const input = document.createElement("textarea");
   input.rows = 4;
   input.placeholder = placeholder;
   setStyles(input, {
     width: "100%",
-    border: `1px solid ${borderC}`,
+    border: `1px solid ${settingsBorderC}`,
     borderRadius: "12px",
     padding: "10px 12px",
     outline: "none",
-    background: inputBg,
+    background: settingsInputBg,
     color: fg,
     fontSize: "13px",
     resize: "vertical"
@@ -1370,7 +1447,7 @@ function createSettingsTextarea(label, placeholder, tokens) {
   return { wrapper, input };
 }
 
-function createSettingsToggle(label, helper, tokens) {
+function createSettingsToggle(label, helper, tokens, accentColor) {
   const fg = (tokens && tokens.text) || "#0f172a";
   const mutedC = (tokens && tokens.muted) || "rgba(15, 23, 42, 0.62)";
   const wrapper = document.createElement("label");
@@ -1384,7 +1461,8 @@ function createSettingsToggle(label, helper, tokens) {
   const input = document.createElement("input");
   input.type = "checkbox";
   setStyles(input, {
-    marginTop: "2px"
+    marginTop: "2px",
+    accentColor: accentColor || "auto"
   });
 
   const content = document.createElement("div");
@@ -1464,31 +1542,46 @@ function createThemePicker(tokens, currentTheme, onChange) {
 
   const modeBtn = document.createElement("button");
   modeBtn.type = "button";
-  const modeIcon = currentTheme.mode === "dark" ? "\u{1F319}" : "\u2600\uFE0F";
-  const modeLabel = currentTheme.mode === "dark" ? "深色" : "浅色";
-  modeBtn.textContent = `${modeIcon} ${modeLabel}`;
+  modeBtn.title = "切换深浅色";
+  modeBtn.dataset.mode = currentTheme.mode;
+  modeBtn.innerHTML = `
+    <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 6px;pointer-events:none;color:${tokens.muted}">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </span>
+    <span style="position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:${tokens.inputBg};box-shadow:0 1px 3px rgba(0,0,0,0.18);transition:transform 180ms ease;pointer-events:none;display:flex;align-items:center;justify-content:center;color:${currentTheme.accent};transform:${currentTheme.mode === "dark" ? "translateX(28px)" : "none"}">
+      ${currentTheme.mode === "dark"
+      ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
+      : '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>'}
+    </span>
+  `;
   setStyles(modeBtn, {
-    display: "flex",
+    position: "relative",
+    display: "inline-flex",
     alignItems: "center",
-    gap: "6px",
-    padding: "6px 10px",
+    width: "56px",
+    height: "28px",
+    padding: "0",
     border: `1px solid ${borderC}`,
-    borderRadius: "10px",
+    borderRadius: "999px",
     background: bg,
     cursor: "pointer",
-    fontSize: "12px",
-    fontWeight: "600",
-    color: fg,
-    whiteSpace: "nowrap"
+    flexShrink: "0"
   });
   modeBtn.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
     const next = currentTheme.mode === "dark" ? "light" : "dark";
     currentTheme.mode = next;
-    const icon = next === "dark" ? "\u{1F319}" : "\u2600\uFE0F";
-    const label = next === "dark" ? "深色" : "浅色";
-    modeBtn.textContent = `${icon} ${label}`;
+    modeBtn.dataset.mode = next;
+    const thumb = modeBtn.querySelector("span:last-child");
+    if (thumb) {
+      thumb.style.transform = next === "dark" ? "translateX(28px)" : "none";
+      thumb.style.color = currentTheme.accent;
+      thumb.innerHTML = next === "dark"
+        ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
+        : '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>';
+    }
     onChange(undefined, next);
   });
 
@@ -1555,11 +1648,12 @@ function ensureSpinnerStyle() {
   const style = document.createElement("style");
   style.id = "__ai_tab_organizer_spinner_style__";
   style.textContent = [
+    `@font-face { font-family: "Inter"; src: url("${chrome.runtime.getURL("inter.ttf")}") format("truetype"); font-weight: 100 900; font-style: normal; }`,
     "@keyframes ai-tab-organizer-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }",
-    `#${OVERLAY_ID} ::-webkit-scrollbar { width: 4px; height: 4px; }`,
-    `#${OVERLAY_ID} ::-webkit-scrollbar-track { background: transparent; }`,
-    `#${OVERLAY_ID} ::-webkit-scrollbar-thumb { background: rgba(120,120,120,0.3); border-radius: 999px; }`,
-    `#${OVERLAY_ID} ::-webkit-scrollbar-thumb:hover { background: rgba(120,120,120,0.55); }`
+    `#${OVERLAY_ID} ::-webkit-scrollbar { width: 4px !important; height: 4px !important; }`,
+    `#${OVERLAY_ID} ::-webkit-scrollbar-track { background: transparent !important; }`,
+    `#${OVERLAY_ID} ::-webkit-scrollbar-thumb { background: rgba(120,120,120,0.3) !important; border-radius: 999px !important; }`,
+    `#${OVERLAY_ID} ::-webkit-scrollbar-thumb:hover { background: rgba(120,120,120,0.55) !important; }`
   ].join("\n");
   (document.head || document.documentElement).appendChild(style);
 }
