@@ -241,6 +241,18 @@ body {
   padding-bottom: 48px;
 }
 
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.debug-toggle-button {
+  flex: 0 0 auto;
+  min-width: 72px;
+}
+
 .surface {
   margin-bottom: 12px;
   padding: 16px;
@@ -493,6 +505,38 @@ textarea {
   min-height: 20px;
   margin-top: 12px;
   font-size: 13px;
+}
+
+.debug-section {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-item);
+}
+
+.debug-log-output {
+  margin: 10px 0 0;
+  padding: 12px;
+  min-height: 140px;
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.search-debug-banner {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .large-field {

@@ -10,6 +10,7 @@ const {
   resolveAISettingsDraft,
   updateAIKeyPlaceholder
 } = globalThis.AIProviderConfig;
+const { recordTabSearchDebug = async () => {} } = globalThis.TabSearchDebug || {};
 
 const OVERLAY_ID = "__ai_tab_organizer_search_overlay__";
 const ACTIONS = ["open", "close", "bookmark_close"];
@@ -69,6 +70,9 @@ async function openTabSearch(prefetchedTabs) {
   const existing = document.getElementById(OVERLAY_ID);
 
   if (existing) {
+    await recordTabSearchDebug("content", "overlay.toggle-close", {
+      href: location.href
+    });
     existing.remove();
     return;
   }
@@ -102,14 +106,39 @@ async function openTabSearch(prefetchedTabs) {
   let isNaturalLoading = false;
 
   let t = theme.tokens;
+  const overlayHost = document.createElement("div");
+  overlayHost.id = OVERLAY_ID;
+  Object.assign(overlayHost.style, {
+    all: "initial",
+    position: "fixed",
+    inset: "0",
+    zIndex: "2147483647"
+  });
+
+  const shadowRoot = overlayHost.attachShadow({ mode: "open" });
+  const overlayStyle = document.createElement("style");
 
   async function reloadTheme() {
     theme = await getThemeTokens();
     t = theme.tokens;
   }
 
+  function updateOverlayScopeStyle() {
+    overlayStyle.textContent = [
+      ":host { all: initial; position: fixed; inset: 0; z-index: 2147483647; }",
+      "*, *::before, *::after { box-sizing: border-box; }",
+      'button, input, select, textarea { font: inherit; color: inherit; margin: 0; }',
+      "button { appearance: none; -webkit-appearance: none; }",
+      `input::placeholder { color: ${t.commandText}; opacity: 0.45; }`,
+      "@keyframes ai-tab-organizer-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }",
+      "::-webkit-scrollbar { width: 4px; height: 4px; }",
+      "::-webkit-scrollbar-track { background: transparent; }",
+      "::-webkit-scrollbar-thumb { background: rgba(120,120,120,0.3); border-radius: 999px; }",
+      "::-webkit-scrollbar-thumb:hover { background: rgba(120,120,120,0.55); }"
+    ].join("\n");
+  }
+
   const overlay = document.createElement("div");
-  overlay.id = OVERLAY_ID;
   setStyles(overlay, {
     position: "fixed",
     inset: "0",
@@ -274,16 +303,28 @@ async function openTabSearch(prefetchedTabs) {
     borderTop: `1px solid ${t.border}`
   });
 
-  const placeholderStyle = document.createElement("style");
-  placeholderStyle.textContent = `#${OVERLAY_ID} input::placeholder { color: ${t.commandText}; opacity: 0.45; }`;
-  panel.appendChild(placeholderStyle);
+  updateOverlayScopeStyle();
+  shadowRoot.appendChild(overlayStyle);
   panel.appendChild(toolbar);
   panel.appendChild(list);
   panel.appendChild(footer);
   overlay.appendChild(panel);
-  document.documentElement.appendChild(overlay);
+  shadowRoot.appendChild(overlay);
+  document.documentElement.appendChild(overlayHost);
+  await recordTabSearchDebug("content", "overlay.opened", {
+    href: location.href,
+    pageType: location.href === chrome.runtime.getURL("options.html") ? "options" : "web",
+    prefetchedTabs: Boolean(prefetchedTabs),
+    tabCount: Array.isArray(tabs) ? tabs.length : 0,
+    shadow: true
+  });
 
-  const close = () => overlay.remove();
+  const close = () => {
+    void recordTabSearchDebug("content", "overlay.closed", {
+      href: location.href
+    });
+    overlayHost.remove();
+  };
 
   list.addEventListener("mouseleave", () => {
     hoveredIndex = null;
@@ -970,6 +1011,7 @@ async function openTabSearch(prefetchedTabs) {
   }
 
   function applyThemeToPanel() {
+    updateOverlayScopeStyle();
     overlay.style.background = t.overlayBg;
     panel.style.background = t.surface;
     panel.style.borderColor = t.border;
@@ -1176,6 +1218,10 @@ async function openTabSearch(prefetchedTabs) {
   rebuildRows();
   input.focus();
 }
+
+globalThis.AITabSearchOverlay = Object.assign({}, globalThis.AITabSearchOverlay, {
+  openTabSearch
+});
 
 ensureSpinnerStyle();
 

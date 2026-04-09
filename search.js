@@ -10,6 +10,7 @@ const {
   resolveAISettingsDraft,
   updateAIKeyPlaceholder
 } = globalThis.AIProviderConfig;
+const { recordTabSearchDebug = async () => {} } = globalThis.TabSearchDebug || {};
 
 const ACTIONS = ["open", "close", "bookmark_close"];
 const NATURAL_BATCH_ACTIONS = [
@@ -23,17 +24,30 @@ initialize();
 
 async function initialize() {
   const root = document.getElementById("search-root");
+  const debugBanner = document.getElementById("search-debug-banner");
 
   if (!root) {
+    await recordTabSearchDebug("standalone", "search-root.missing");
     return;
   }
+
+  renderDebugBanner(debugBanner);
+
+  await recordTabSearchDebug("standalone", "window.opened", {
+    href: location.href
+  });
 
   const response = await chrome.runtime.sendMessage({ type: "get-tabs" });
 
   if (!response?.ok) {
+    await recordTabSearchDebug("standalone", "tabs.load.failed", response?.error || "unknown");
     root.textContent = "无法读取标签页";
     return;
   }
+
+  await recordTabSearchDebug("standalone", "tabs.loaded", {
+    tabCount: Array.isArray(response.tabs) ? response.tabs.length : 0
+  });
 
   let tabs = response.tabs || [];
   let entries = [];
@@ -978,6 +992,50 @@ async function initialize() {
   rebuildRows();
   updateHint();
   input.focus();
+}
+
+function renderDebugBanner(node) {
+  if (!node) {
+    return;
+  }
+
+  if (!isDebugUiEnabled()) {
+    node.classList.add("hidden");
+    node.textContent = "";
+    return;
+  }
+
+  const params = new URLSearchParams(location.search);
+  const reason = params.get("debug_reason");
+
+  if (!reason) {
+    node.classList.add("hidden");
+    node.textContent = "";
+    return;
+  }
+
+  const delivery = params.get("debug_delivery");
+  const error = params.get("debug_error");
+  const trace = params.get("debug_trace");
+  const tabId = params.get("debug_tab_id");
+  const sourceUrl = params.get("debug_source_url");
+
+  node.classList.remove("hidden");
+  node.textContent = [
+    `调试：这次打开了独立窗口。`,
+    `原因：${reason}`,
+    error ? `细节：${error}` : "",
+    trace ? `链路：${trace}` : "",
+    delivery ? `原始分发：${delivery}` : "",
+    tabId ? `目标 Tab：${tabId}` : "",
+    sourceUrl ? `来源页：${sourceUrl}` : ""
+  ].filter(Boolean).join(" ");
+}
+
+function isDebugUiEnabled() {
+  const manifest = chrome.runtime?.getManifest?.() || {};
+  const forceDebug = new URLSearchParams(location.search).get("debug") === "1";
+  return forceDebug || !Object.prototype.hasOwnProperty.call(manifest, "update_url");
 }
 
 ensureSpinnerStyle();

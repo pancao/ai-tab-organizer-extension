@@ -11,7 +11,10 @@
 <body class="settings-body">
   <main class="settings-shell">
     <section class="surface settings-panel compact-surface">
-      <div class="settings-page-title">设置</div>
+      <div class="settings-header">
+        <div class="settings-page-title">设置</div>
+        <button id="debug-toggle-button" class="secondary-button debug-toggle-button hidden" type="button">调试</button>
+      </div>
 
       <div class="theme-section">
         <div class="theme-colors">
@@ -94,11 +97,25 @@
         </div>
 
         <div id="status-text" class="helper-text"></div>
+
+        <div id="debug-section" class="debug-section hidden">
+          <div class="section-title">搜索调试</div>
+          <div class="helper-inline">按一次快捷键后点刷新，就能看到现在到底走的是页内浮层、设置页通道，还是独立窗口。</div>
+          <div class="button-row minimal-actions">
+            <button id="refresh-debug-button" class="secondary-button" type="button">刷新日志</button>
+            <button id="copy-debug-button" class="secondary-button" type="button">复制日志</button>
+            <button id="clear-debug-button" class="secondary-button" type="button">清空日志</button>
+          </div>
+          <pre id="debug-log-output" class="debug-log-output">暂无日志。</pre>
+        </div>
       </div>
     </section>
   </main>
   <script src="theme.js"></script>
+  <script src="tab-search-debug.js"></script>
+  <script src="tab-search-routing.js"></script>
   <script src="ai-provider-config.js"></script>
+  <script src="content.js"></script>
   <script src="options.js"></script>
 </body>
 

@@ -1,10 +1,69 @@
+import "./tab-search-debug.js";
+import "./tab-search-routing.js";
+
 const DEFAULT_AI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 const DEFAULT_AI_MODEL = "gpt-4.1-mini";
 const TAB_GROUP_COLORS = ["grey", "blue", "red", "yellow", "green", "pink", "purple", "cyan", "orange"];
 const SEARCH_PANEL_BLOCKED_PROTOCOLS = ["about:", "brave:", "chrome:", "edge:", "vivaldi:"];
 const TITLE_REWRITE_MAX_LENGTH = 24;
+const {
+  EXTENSION_PAGE_SEARCH_CHANNEL_NAME,
+  EXTENSION_PAGE_SEARCH_REQUEST_STORAGE_KEY,
+  EXTENSION_PAGE_SEARCH_RESPONSE_STORAGE_KEY,
+  OPTIONS_PAGE_SEARCH_HASH_PREFIX,
+  OPTIONS_PAGE_SEARCH_HASH_RESPONSE_STORAGE_KEY,
+  EXTENSION_PAGE_PORT_NAME,
+  TAB_SEARCH_DELIVERY,
+  buildStandaloneSearchUrl,
+  isExtensionPageSearchResponseMatch,
+  isOptionsPagePortName,
+  resolveOptionsPageConnectionTabId,
+  resolveTabSearchDelivery,
+  shouldBackgroundHandleRuntimeMessage
+} = globalThis.TabSearchRouting;
+const { recordTabSearchDebug } = globalThis.TabSearchDebug;
 
 let organizationState = createIdleState();
+let standaloneSearchWindowId = null;
+let extensionPageRequestId = 0;
+
+const extensionPagePorts = new Map();
+const extensionPageUnboundPorts = new Set();
+const extensionPageChannel = typeof BroadcastChannel === "function"
+  ? new BroadcastChannel(EXTENSION_PAGE_SEARCH_CHANNEL_NAME)
+  : null;
+const pendingExtensionPageChannelRequests = new Map();
+const pendingExtensionPageRequests = new Map();
+const pendingExtensionPageHashRequests = new Map();
+const pendingExtensionPageStorageRequests = new Map();
+
+if (extensionPageChannel) {
+  extensionPageChannel.addEventListener("message", (event) => {
+    const message = event?.data;
+
+    if (message?.type !== "open-extension-tab-search-result") {
+      return;
+    }
+
+    const pending = pendingExtensionPageChannelRequests.get(message.requestId);
+
+    if (!pending) {
+      return;
+    }
+
+    pendingExtensionPageChannelRequests.delete(message.requestId);
+    clearTimeout(pending.timerId);
+    pending.resolve({
+      ok: Boolean(message.ok),
+      error: message.error || (message.ok ? "" : "options-channel-rejected")
+    });
+    void recordTabSearchDebug("background", "search.extension-overlay.channel.result", {
+      requestId: message.requestId,
+      ok: Boolean(message.ok),
+      error: message.error || ""
+    });
+  });
+}
 
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === "install") {
@@ -14,9 +73,12 @@ chrome.runtime.onInstalled.addListener((details) => {
 
 chrome.commands.onCommand.addListener(async (command) => {
   if (command === "search-tabs") {
+    await recordTabSearchDebug("background", "command.search-tabs", { command });
+
     try {
       await openTabSearch();
     } catch (error) {
+      await recordTabSearchDebug("background", "command.search-tabs.error", error);
       console.error("Search command failed:", error);
     }
 
@@ -33,6 +95,10 @@ chrome.commands.onCommand.addListener(async (command) => {
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (!shouldBackgroundHandleRuntimeMessage(message)) {
+    return undefined;
+  }
+
   handleRuntimeMessage(message)
     .then((result) => sendResponse(result))
     .catch((error) => {
@@ -41,6 +107,140 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     });
 
   return true;
+});
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== "local") {
+    return;
+  }
+
+  const response = changes[EXTENSION_PAGE_SEARCH_RESPONSE_STORAGE_KEY]?.newValue;
+  const hashResponse = changes[OPTIONS_PAGE_SEARCH_HASH_RESPONSE_STORAGE_KEY]?.newValue;
+
+  if (hashResponse?.requestId) {
+    const pendingHash = pendingExtensionPageHashRequests.get(hashResponse.requestId);
+
+    if (pendingHash) {
+      pendingExtensionPageHashRequests.delete(hashResponse.requestId);
+      clearTimeout(pendingHash.timerId);
+      pendingHash.resolve({
+        ok: Boolean(hashResponse.ok),
+        error: hashResponse.error || (hashResponse.ok ? "" : "options-hash-rejected")
+      });
+    }
+  }
+
+  if (!response?.requestId) {
+    return;
+  }
+
+  const pending = pendingExtensionPageStorageRequests.get(response.requestId);
+
+  if (!pending || !isExtensionPageSearchResponseMatch(response, response.requestId)) {
+    return;
+  }
+
+  pendingExtensionPageStorageRequests.delete(response.requestId);
+  clearTimeout(pending.timerId);
+  pending.resolve({
+    ok: Boolean(response.ok),
+    error: response.error || (response.ok ? "" : "options-storage-rejected")
+  });
+});
+
+chrome.runtime.onConnect.addListener((port) => {
+  if (!isOptionsPagePortName(port.name)) {
+    return;
+  }
+
+  let connectedTabId = resolveOptionsPageConnectionTabId({
+    senderTabId: port.sender?.tab?.id,
+    registeredTabId: null
+  });
+
+  if (connectedTabId) {
+    extensionPagePorts.set(connectedTabId, port);
+    void recordTabSearchDebug("background", "options-port.connected", {
+      tabId: connectedTabId,
+      source: "sender"
+    });
+  } else {
+    extensionPageUnboundPorts.add(port);
+    void recordTabSearchDebug("background", "options-port.connected", {
+      tabId: null,
+      source: "unbound"
+    });
+  }
+
+  port.onMessage.addListener((message) => {
+    if (message?.type === "register-options-page") {
+      const nextTabId = resolveOptionsPageConnectionTabId({
+        senderTabId: port.sender?.tab?.id,
+        registeredTabId: message.tabId
+      });
+
+      if (!nextTabId) {
+        extensionPageUnboundPorts.add(port);
+        void recordTabSearchDebug("background", "options-port.registered", {
+          tabId: null,
+          source: "unbound"
+        });
+        return;
+      }
+
+      if (connectedTabId && connectedTabId !== nextTabId && extensionPagePorts.get(connectedTabId) === port) {
+        extensionPagePorts.delete(connectedTabId);
+      }
+
+      extensionPageUnboundPorts.delete(port);
+      connectedTabId = nextTabId;
+      extensionPagePorts.set(connectedTabId, port);
+      void recordTabSearchDebug("background", "options-port.registered", {
+        tabId: connectedTabId,
+        source: port.sender?.tab?.id ? "sender" : "message"
+      });
+      return;
+    }
+
+    if (message?.type === "open-extension-tab-search-result") {
+      const pending = pendingExtensionPageRequests.get(message.requestId);
+
+      if (!pending) {
+        return;
+      }
+
+      pendingExtensionPageRequests.delete(message.requestId);
+      clearTimeout(pending.timerId);
+      pending.resolve({
+        ok: Boolean(message.ok),
+        error: message.error || (message.ok ? "" : "options-page-rejected")
+      });
+      void recordTabSearchDebug("background", "options-port.response", {
+        requestId: message.requestId,
+        ok: Boolean(message.ok),
+        error: message.error || ""
+      });
+    }
+  });
+
+  port.onDisconnect.addListener(() => {
+    if (connectedTabId && extensionPagePorts.get(connectedTabId) === port) {
+      extensionPagePorts.delete(connectedTabId);
+      void recordTabSearchDebug("background", "options-port.disconnected", { tabId: connectedTabId });
+    }
+
+    extensionPageUnboundPorts.delete(port);
+
+    for (const [requestId, pending] of pendingExtensionPageRequests.entries()) {
+      if (pending.port !== port) {
+        continue;
+      }
+
+      pendingExtensionPageRequests.delete(requestId);
+      clearTimeout(pending.timerId);
+      pending.resolve({ ok: false, error: "options-port-disconnected" });
+    }
+  });
 });
 
 async function handleRuntimeMessage(message) {
@@ -84,40 +284,401 @@ async function openTabSearch() {
     getSearchableTabs()
   ]);
 
-  if (!tab?.id) {
-    await openStandaloneSearchWindow();
-    return;
-  }
+  const delivery = resolveTabSearchDelivery({
+    url: tab?.url,
+    blockedProtocols: SEARCH_PANEL_BLOCKED_PROTOCOLS,
+    optionsPageUrl: chrome.runtime.getURL("options.html")
+  });
 
-  if (isSearchPanelBlockedTab(tab.url)) {
-    await openStandaloneSearchWindow();
+  await recordTabSearchDebug("background", "search.delivery", {
+    tabId: tab?.id || null,
+    url: tab?.url || "",
+    delivery
+  });
+
+  if (!tab?.id || delivery === TAB_SEARCH_DELIVERY.STANDALONE_WINDOW) {
+    await openStandaloneSearchWindow(
+      !tab?.id ? "no-active-tab" : "blocked-delivery",
+      {
+        delivery,
+        tabId: tab?.id || null,
+        sourceUrl: tab?.url || ""
+      }
+    );
     return;
   }
 
   const payload = { type: "open-tab-search", tabs };
 
+  if (delivery === TAB_SEARCH_DELIVERY.EXTENSION_PAGE_OVERLAY) {
+    const hashResult = await requestExtensionPageSearchOverlayViaHash(tab.id);
+    await recordTabSearchDebug("background", "search.extension-overlay.hash", {
+      tabId: tab.id,
+      ok: hashResult.ok,
+      error: hashResult.error || ""
+    });
+
+    if (hashResult.ok) {
+      return;
+    }
+
+    const overlayResult = await requestExtensionPageSearchOverlay(tab.id, tabs);
+    await recordTabSearchDebug("background", "search.extension-overlay.result", {
+      tabId: tab.id,
+      ok: overlayResult.ok,
+      error: overlayResult.error || ""
+    });
+
+    if (!overlayResult.ok) {
+      const extensionOverlayTrace = formatExtensionOverlayDebugTrace({
+        hashResult,
+        overlayResult
+      });
+
+      await openStandaloneSearchWindow("extension-overlay-failed", {
+        delivery,
+        error: overlayResult.error || "",
+        trace: extensionOverlayTrace,
+        tabId: tab.id,
+        sourceUrl: tab?.url || ""
+      });
+    }
+
+    return;
+  }
+
   try {
     await chrome.tabs.sendMessage(tab.id, payload);
+    await recordTabSearchDebug("background", "search.page-overlay.sent", { tabId: tab.id });
   } catch (_error) {
     try {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        files: ["ai-provider-config.js", "content.js"]
+        files: ["tab-search-debug.js", "ai-provider-config.js", "content.js"]
       });
 
       await chrome.tabs.sendMessage(tab.id, payload);
+      await recordTabSearchDebug("background", "search.page-overlay.injected", { tabId: tab.id });
     } catch (_innerError) {
-      await openStandaloneSearchWindow();
+      await recordTabSearchDebug("background", "search.page-overlay.fallback-window", { tabId: tab.id });
+      await openStandaloneSearchWindow("page-overlay-failed", {
+        delivery,
+        tabId: tab.id,
+        sourceUrl: tab?.url || ""
+      });
     }
   }
 }
 
-async function openStandaloneSearchWindow() {
-  await chrome.windows.create({
-    url: chrome.runtime.getURL("search.html"),
+function formatExtensionOverlayDebugTrace({ hashResult, overlayResult }) {
+  const overlayAttempts = overlayResult?.attempts || {};
+
+  return [
+    `hash=${hashResult?.ok ? "ok" : (hashResult?.error || "skipped")}`,
+    `channel=${overlayAttempts.channel || "skipped"}`,
+    `storage=${overlayAttempts.storage || "skipped"}`,
+    `port=${overlayAttempts.port || "skipped"}`
+  ].join(" | ");
+}
+
+function requestExtensionPageSearchOverlayViaHash(tabId) {
+  const requestId = `options-hash-search-${Date.now()}-${extensionPageRequestId += 1}`;
+  const nextUrl = `${chrome.runtime.getURL("options.html")}${OPTIONS_PAGE_SEARCH_HASH_PREFIX}${requestId}`;
+
+  return new Promise((resolve) => {
+    const timerId = setTimeout(() => {
+      pendingExtensionPageHashRequests.delete(requestId);
+      void recordTabSearchDebug("background", "search.extension-overlay.hash.timeout", {
+        tabId,
+        requestId
+      });
+      resolve({ ok: false, error: "options-hash-timeout" });
+    }, 1200);
+
+    pendingExtensionPageHashRequests.set(requestId, {
+      resolve,
+      timerId
+    });
+
+    chrome.tabs.update(tabId, { url: nextUrl }).then(() => {
+      void recordTabSearchDebug("background", "search.extension-overlay.hash.requested", {
+        tabId,
+        requestId
+      });
+    }).catch((error) => {
+      pendingExtensionPageHashRequests.delete(requestId);
+      clearTimeout(timerId);
+      const message = error instanceof Error ? error.message : "options-hash-update-failed";
+      void recordTabSearchDebug("background", "search.extension-overlay.hash.error", {
+        tabId,
+        requestId,
+        error: message
+      });
+      resolve({ ok: false, error: message });
+    });
+  });
+}
+
+async function openStandaloneSearchWindow(reason, context) {
+  const targetUrl = buildStandaloneSearchUrl(
+    chrome.runtime.getURL("search.html"),
+    reason,
+    context
+  );
+
+  if (standaloneSearchWindowId) {
+    try {
+      const tabs = await chrome.tabs.query({ windowId: standaloneSearchWindowId });
+
+      if (tabs[0]?.id) {
+        await chrome.tabs.update(tabs[0].id, { url: targetUrl });
+      }
+
+      await chrome.windows.update(standaloneSearchWindowId, {
+        focused: true,
+        drawAttention: true
+      });
+      await recordTabSearchDebug("background", "search.standalone.reused", { windowId: standaloneSearchWindowId });
+      return;
+    } catch (_error) {
+      standaloneSearchWindowId = null;
+    }
+  }
+
+  const createdWindow = await chrome.windows.create({
+    url: targetUrl,
     type: "popup",
     width: 820,
     height: 720
+  });
+
+  standaloneSearchWindowId = createdWindow?.id || null;
+  await recordTabSearchDebug("background", "search.standalone.created", { windowId: standaloneSearchWindowId });
+}
+
+function requestExtensionPageSearchOverlay(tabId, tabs) {
+  return requestExtensionPageSearchOverlayViaChannel(tabId, tabs).then(async (channelResult) => {
+    if (channelResult.ok) {
+      return channelResult;
+    }
+
+    const storageResult = await requestExtensionPageSearchOverlayViaStorage(tabId, tabs);
+
+    if (storageResult.ok) {
+      return storageResult;
+    }
+
+    const portResult = await requestExtensionPageSearchOverlayViaPort(tabId, tabs);
+
+    if (portResult.ok) {
+      return portResult;
+    }
+
+    return {
+      ok: false,
+      attempts: {
+        channel: channelResult.ok ? "ok" : (channelResult.error || "failed"),
+        storage: storageResult.ok ? "ok" : (storageResult.error || "failed"),
+        port: portResult.ok ? "ok" : (portResult.error || "failed")
+      },
+      error: [channelResult.error, storageResult.error, portResult.error]
+        .filter(Boolean)
+        .join(" / ") || "options-overlay-unavailable"
+    };
+  });
+}
+
+function requestExtensionPageSearchOverlayViaChannel(tabId, tabs) {
+  if (!extensionPageChannel) {
+    void recordTabSearchDebug("background", "search.extension-overlay.channel.unavailable", { tabId });
+    return Promise.resolve({ ok: false, error: "options-channel-unavailable" });
+  }
+
+  const requestId = `extension-channel-search-${Date.now()}-${extensionPageRequestId += 1}`;
+
+  return new Promise((resolve) => {
+    const timerId = setTimeout(() => {
+      pendingExtensionPageChannelRequests.delete(requestId);
+      void recordTabSearchDebug("background", "search.extension-overlay.channel.timeout", {
+        tabId,
+        requestId
+      });
+      resolve({ ok: false, error: "options-channel-timeout" });
+    }, 1200);
+
+    pendingExtensionPageChannelRequests.set(requestId, {
+      resolve,
+      timerId
+    });
+
+    try {
+      void recordTabSearchDebug("background", "search.extension-overlay.channel.requested", {
+        tabId,
+        requestId,
+        tabCount: Array.isArray(tabs) ? tabs.length : 0
+      });
+      extensionPageChannel.postMessage({
+        type: "open-extension-tab-search",
+        requestId,
+        targetTabId: tabId,
+        tabs
+      });
+    } catch (error) {
+      pendingExtensionPageChannelRequests.delete(requestId);
+      clearTimeout(timerId);
+      const message = error instanceof Error ? error.message : "options-channel-post-failed";
+      void recordTabSearchDebug("background", "search.extension-overlay.channel.error", {
+        tabId,
+        requestId,
+        error: message
+      });
+      resolve({ ok: false, error: message });
+    }
+  });
+}
+
+function requestExtensionPageSearchOverlayViaStorage(tabId, tabs) {
+  const requestId = `extension-storage-search-${Date.now()}-${extensionPageRequestId += 1}`;
+
+  return new Promise((resolve) => {
+    const timerId = setTimeout(() => {
+      pendingExtensionPageStorageRequests.delete(requestId);
+      void recordTabSearchDebug("background", "search.extension-overlay.storage.timeout", {
+        tabId,
+        requestId
+      });
+      resolve({ ok: false, error: "options-storage-timeout" });
+    }, 1500);
+
+    pendingExtensionPageStorageRequests.set(requestId, {
+      resolve,
+      timerId
+    });
+
+    void recordTabSearchDebug("background", "search.extension-overlay.storage.requested", {
+      tabId,
+      requestId,
+      tabCount: Array.isArray(tabs) ? tabs.length : 0
+    });
+
+    chrome.storage.local.set({
+      [EXTENSION_PAGE_SEARCH_REQUEST_STORAGE_KEY]: {
+        requestId,
+        targetTabId: tabId,
+        tabs,
+        at: Date.now()
+      }
+    }).catch((error) => {
+      pendingExtensionPageStorageRequests.delete(requestId);
+      clearTimeout(timerId);
+      const message = error instanceof Error ? error.message : "options-storage-set-failed";
+      void recordTabSearchDebug("background", "search.extension-overlay.storage.error", {
+        tabId,
+        requestId,
+        error: message
+      });
+      resolve({ ok: false, error: message });
+    });
+  });
+}
+
+function requestExtensionPageSearchOverlayViaPort(tabId, tabs) {
+  const candidatePorts = [];
+  const mappedPort = extensionPagePorts.get(tabId);
+
+  if (mappedPort) {
+    candidatePorts.push({ port: mappedPort, source: "mapped" });
+  }
+
+  if (candidatePorts.length === 0) {
+    for (const port of extensionPageUnboundPorts) {
+      candidatePorts.push({ port, source: "unbound" });
+    }
+  }
+
+  if (candidatePorts.length === 0) {
+    void recordTabSearchDebug("background", "search.extension-overlay.no-port", { tabId });
+    return Promise.resolve({ ok: false, error: "options-port-missing" });
+  }
+
+  return tryExtensionPageOverlayPorts(candidatePorts, tabId, tabs);
+}
+
+function tryExtensionPageOverlayPorts(candidatePorts, tabId, tabs) {
+  const attempts = Array.isArray(candidatePorts) ? candidatePorts : [];
+  const errors = [];
+
+  return attempts.reduce((chain, candidate) => {
+    return chain.then(async (result) => {
+      if (result?.ok) {
+        return result;
+      }
+
+      const attemptResult = await requestExtensionPageOverlayThroughPort(candidate, tabId, tabs);
+
+      if (!attemptResult.ok && attemptResult.error) {
+        errors.push(attemptResult.error);
+      }
+
+      return attemptResult;
+    });
+  }, Promise.resolve({ ok: false, error: "" })).then((result) => {
+    if (result?.ok) {
+      return result;
+    }
+
+    return {
+      ok: false,
+      error: errors.filter(Boolean).join(" / ") || "options-port-failed"
+    };
+  });
+}
+
+function requestExtensionPageOverlayThroughPort(candidate, tabId, tabs) {
+  const port = candidate?.port;
+
+  if (!port) {
+    return Promise.resolve({ ok: false, error: "options-port-missing" });
+  }
+
+  const requestId = `extension-search-${Date.now()}-${extensionPageRequestId += 1}`;
+
+  return new Promise((resolve) => {
+    const timerId = setTimeout(() => {
+      pendingExtensionPageRequests.delete(requestId);
+      void recordTabSearchDebug("background", "search.extension-overlay.timeout", {
+        tabId,
+        requestId,
+        source: candidate?.source || "unknown"
+      });
+      resolve({ ok: false, error: "options-port-timeout" });
+    }, 1200);
+
+    pendingExtensionPageRequests.set(requestId, {
+      port,
+      resolve,
+      timerId
+    });
+
+    try {
+      void recordTabSearchDebug("background", "search.extension-overlay.requested", {
+        tabId,
+        requestId,
+        source: candidate?.source || "unknown",
+        tabCount: Array.isArray(tabs) ? tabs.length : 0
+      });
+      port.postMessage({
+        type: "open-extension-tab-search",
+        requestId,
+        targetTabId: tabId,
+        tabs
+      });
+    } catch (_error) {
+      pendingExtensionPageRequests.delete(requestId);
+      clearTimeout(timerId);
+      void recordTabSearchDebug("background", "search.extension-overlay.post-failed", { tabId, requestId });
+      resolve({ ok: false, error: "options-port-post-failed" });
+    }
   });
 }
 
