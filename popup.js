@@ -6,6 +6,7 @@ const searchShortcut = document.getElementById("search-shortcut");
 
 let pollTimer = null;
 
+// Fire-and-forget: don't await so popup renders immediately
 initialize();
 
 runButton.addEventListener("click", async () => {
@@ -35,8 +36,7 @@ settingsButton.addEventListener("click", async () => {
 });
 
 async function initialize() {
-  await renderShortcuts();
-  await refreshState();
+  await Promise.all([renderShortcuts(), refreshState()]);
   pollTimer = window.setInterval(refreshState, 500);
 }
 

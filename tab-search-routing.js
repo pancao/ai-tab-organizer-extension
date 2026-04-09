@@ -90,6 +90,10 @@
       url.searchParams.set("debug_trace", String(details.trace));
     }
 
+    if (details.sourceWindowId != null) {
+      url.searchParams.set("sourceWindowId", String(details.sourceWindowId));
+    }
+
     if (originalBaseUrl.startsWith("chrome-extension://")) {
       return `${url.protocol}//${url.host}${url.pathname}${url.search}`;
     }

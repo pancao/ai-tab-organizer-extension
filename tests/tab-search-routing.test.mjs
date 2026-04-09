@@ -79,6 +79,7 @@ test("builds a standalone search url with fallback debug details", () => {
     {
       delivery: TAB_SEARCH_DELIVERY.EXTENSION_PAGE_OVERLAY,
       error: "options-port-timeout",
+      sourceWindowId: 654,
       trace: "hash=options-hash-timeout | channel=options-channel-timeout | storage=options-storage-timeout | port=options-port-timeout",
       tabId: 321,
       sourceUrl: "chrome-extension://test-extension/options.html"
@@ -87,7 +88,7 @@ test("builds a standalone search url with fallback debug details", () => {
 
   assert.equal(
     url,
-    "chrome-extension://test-extension/search.html?debug_reason=extension-overlay-timeout&debug_delivery=extension-page-overlay&debug_error=options-port-timeout&debug_tab_id=321&debug_source_url=chrome-extension%3A%2F%2Ftest-extension%2Foptions.html&debug_trace=hash%3Doptions-hash-timeout+%7C+channel%3Doptions-channel-timeout+%7C+storage%3Doptions-storage-timeout+%7C+port%3Doptions-port-timeout"
+    "chrome-extension://test-extension/search.html?debug_reason=extension-overlay-timeout&debug_delivery=extension-page-overlay&debug_error=options-port-timeout&debug_tab_id=321&debug_source_url=chrome-extension%3A%2F%2Ftest-extension%2Foptions.html&debug_trace=hash%3Doptions-hash-timeout+%7C+channel%3Doptions-channel-timeout+%7C+storage%3Doptions-storage-timeout+%7C+port%3Doptions-port-timeout&sourceWindowId=654"
   );
 });
 

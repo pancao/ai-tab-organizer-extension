@@ -36,6 +36,8 @@ async function initialize() {
   await recordTabSearchDebug("standalone", "window.opened", {
     href: location.href
   });
+  const sourceWindowId = new URLSearchParams(window.location.search).get("sourceWindowId");
+  const targetWindowId = sourceWindowId ? Number(sourceWindowId) : undefined;
 
   const response = await chrome.runtime.sendMessage({ type: "get-tabs" });
 
@@ -109,7 +111,7 @@ async function initialize() {
     setToolbarButtonBusy(arrangeButton, true, "整理中…");
 
     try {
-      await chrome.runtime.sendMessage({ type: "run-ai-organization" });
+      await chrome.runtime.sendMessage({ type: "run-ai-organization", windowId: targetWindowId });
       window.close();
     } finally {
       setToolbarButtonBusy(arrangeButton, false, "整理Tab");
@@ -543,7 +545,7 @@ async function initialize() {
         preference: preferenceField.input.value,
         experimentalTitleRewriteEnabled: toggleField.input.checked
       });
-      const response = await chrome.runtime.sendMessage({ type: "run-ai-organization" });
+      const response = await chrome.runtime.sendMessage({ type: "run-ai-organization", windowId: targetWindowId });
       status.textContent = response?.summary || response?.reason || (response?.ok ? "已开始" : response?.error || "整理失败");
       if (response?.ok || response?.skipped) {
         window.close();
@@ -825,7 +827,7 @@ async function initialize() {
 
   async function executeEntryAction(entry, action) {
     if (entry.kind === "command" && entry.command === "arrange") {
-      await chrome.runtime.sendMessage({ type: "run-ai-organization" });
+      await chrome.runtime.sendMessage({ type: "run-ai-organization", windowId: targetWindowId });
       window.close();
       return;
     }
@@ -857,7 +859,11 @@ async function initialize() {
     }
 
     if (action === "close") {
-      await chrome.runtime.sendMessage({ type: "close-tab", tabId: entry.tabId });
+      const response = await chrome.runtime.sendMessage({ type: "close-tab", tabId: entry.tabId });
+      if (!response?.ok) {
+        hint.textContent = response?.error || "关闭标签页失败";
+        return;
+      }
       tabs = tabs.filter((tab) => tab.id !== entry.tabId);
       hoveredIndex = null;
       selectedAction = null;
@@ -866,7 +872,11 @@ async function initialize() {
     }
 
     if (action === "bookmark_close") {
-      await chrome.runtime.sendMessage({ type: "bookmark-and-close-tab", tabId: entry.tabId });
+      const response = await chrome.runtime.sendMessage({ type: "bookmark-and-close-tab", tabId: entry.tabId });
+      if (!response?.ok) {
+        hint.textContent = response?.error || "收藏并关闭失败";
+        return;
+      }
       tabs = tabs.filter((tab) => tab.id !== entry.tabId);
       hoveredIndex = null;
       selectedAction = null;
@@ -896,7 +906,7 @@ async function initialize() {
     updateHint();
     rebuildRows();
 
-    const response = await chrome.runtime.sendMessage({ type: "preview-batch-tabs", query });
+    const response = await chrome.runtime.sendMessage({ type: "preview-batch-tabs", query, windowId: targetWindowId });
     isNaturalLoading = false;
 
     if (!response?.ok) {
@@ -978,13 +988,19 @@ async function initialize() {
       return;
     }
 
-    await chrome.runtime.sendMessage({
+    const response = await chrome.runtime.sendMessage({
       type: "apply-batch-action",
       action,
       tabIds: (naturalPreview?.tabs || []).map((tab) => tab.id),
       query: naturalPreview?.query || input.value.trim(),
-      label: naturalPreview?.suggestedLabel || ""
+      label: naturalPreview?.suggestedLabel || "",
+      windowId: targetWindowId
     });
+
+    if (!response?.ok) {
+      hint.textContent = response?.error || "批量操作失败";
+      return;
+    }
 
     window.close();
   }

@@ -1,10 +1,11 @@
-async function applyTheme() {
-  const { themeColor, themeMode } = await chrome.storage.local.get(["themeColor", "themeMode"]);
+// Apply theme synchronously with defaults first, then correct from storage
+document.documentElement.dataset.themeColor = "neutral";
+document.documentElement.dataset.themeMode = "light";
+
+chrome.storage.local.get(["themeColor", "themeMode"]).then(({ themeColor, themeMode }) => {
   document.documentElement.dataset.themeColor = themeColor || "neutral";
   document.documentElement.dataset.themeMode = themeMode || "light";
-}
-
-applyTheme();
+});
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return;

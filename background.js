@@ -248,7 +248,7 @@ async function handleRuntimeMessage(message) {
     case "get-organization-state":
       return { ok: true, state: organizationState };
     case "run-ai-organization":
-      return await organizeTabsWithAI();
+      return await organizeTabsWithAI(message.windowId);
     case "run-tab-search":
       await openTabSearch();
       return { ok: true };
@@ -270,7 +270,7 @@ async function handleRuntimeMessage(message) {
       await bookmarkAndCloseTab(message.tabId);
       return { ok: true };
     case "preview-batch-tabs":
-      return await previewBatchTabs(message.query);
+      return await previewBatchTabs(message.query, message.windowId);
     case "apply-batch-action":
       return await applyBatchAction(message);
     default:
@@ -302,7 +302,8 @@ async function openTabSearch() {
       {
         delivery,
         tabId: tab?.id || null,
-        sourceUrl: tab?.url || ""
+        sourceUrl: tab?.url || "",
+        sourceWindowId: tab?.windowId || null
       }
     );
     return;
@@ -364,7 +365,8 @@ async function openTabSearch() {
       await openStandaloneSearchWindow("page-overlay-failed", {
         delivery,
         tabId: tab.id,
-        sourceUrl: tab?.url || ""
+        sourceUrl: tab?.url || "",
+        sourceWindowId: tab.windowId
       });
     }
   }
@@ -682,7 +684,7 @@ function requestExtensionPageOverlayThroughPort(candidate, tabId, tabs) {
   });
 }
 
-async function organizeTabsWithAI() {
+async function organizeTabsWithAI(windowId) {
   if (organizationState.busy) {
     return { ok: false, error: "已有一次整理正在进行中。" };
   }
@@ -709,7 +711,7 @@ async function organizeTabsWithAI() {
       detail: "正在分析当前窗口的未固定网页标签页"
     });
 
-    const windowTabs = await chrome.tabs.query({ currentWindow: true });
+    const windowTabs = await chrome.tabs.query(windowId ? { windowId } : { currentWindow: true });
     const candidateTabs = getCandidateTabs(windowTabs);
     pushLog(`读取到 ${candidateTabs.length} 个可整理标签页`);
 
@@ -776,7 +778,7 @@ async function organizeTabsWithAI() {
   }
 }
 
-async function previewBatchTabs(query) {
+async function previewBatchTabs(query, windowId) {
   const trimmedQuery = String(query || "").trim();
 
   if (!trimmedQuery) {
@@ -789,7 +791,7 @@ async function previewBatchTabs(query) {
     return { ok: false, error: "请先在设置页填写 API Key。" };
   }
 
-  const currentTabs = getCandidateTabs(await chrome.tabs.query({ currentWindow: true }));
+  const currentTabs = getCandidateTabs(await chrome.tabs.query(windowId ? { windowId } : { currentWindow: true }));
 
   if (currentTabs.length === 0) {
     return { ok: false, error: "当前窗口没有可操作的网页标签页。" };
@@ -819,8 +821,9 @@ async function applyBatchAction(message) {
     return { ok: false, error: "还没有选中任何标签页。" };
   }
 
-  const tabs = await Promise.all(tabIds.map((tabId) => chrome.tabs.get(tabId)));
-  const validTabs = tabs.filter((tab) => tab.id);
+  const results = await Promise.allSettled(tabIds.map((tabId) => chrome.tabs.get(tabId)));
+  const validTabs = results.filter((r) => r.status === "fulfilled").map((r) => r.value).filter((tab) => tab.id);
+  const validTabIds = validTabs.map((tab) => tab.id);
 
   if (validTabs.length === 0) {
     return { ok: false, error: "选中的标签页已经不存在了。" };
@@ -828,7 +831,7 @@ async function applyBatchAction(message) {
 
   if (action === "group") {
     const label = customLabel || deriveBatchLabel(query, validTabs);
-    const groupId = await chrome.tabs.group({ tabIds });
+    const groupId = await chrome.tabs.group({ tabIds: validTabIds });
     await chrome.tabGroups.update(groupId, {
       title: label,
       color: "grey",
@@ -839,7 +842,7 @@ async function applyBatchAction(message) {
   }
 
   if (action === "delete") {
-    await chrome.tabs.remove(tabIds);
+    await chrome.tabs.remove(validTabIds);
     return { ok: true, summary: `已关闭 ${validTabs.length} 个标签页` };
   }
 
@@ -894,7 +897,7 @@ async function requestBatchSelection(query, tabs, settings) {
 
   return await requestJSONFromAI(
     settings,
-    "You select browser tabs from a list based on a natural-language request. Return strict JSON only. Pick only strongly relevant tabs. Output selectedTabIds as an array of numbers, a short rationale string, and a suggestedLabel string. Each tab may include idleMin (integer: minutes since last accessed) — use it for time-based queries like 'not opened in 30 minutes' or 'inactive for an hour'. Tabs without idleMin have unknown access time.",
+    "You select browser tabs from a list based on a natural-language request. Return strict JSON only. Pick all relevant tabs — match against title, url, AND domain (e.g. a query for 'Pinterest' should match tabs whose domain contains 'pinterest' even if the title does not mention it). Output selectedTabIds as an array of numbers, a short rationale string, and a suggestedLabel string. Each tab may include idleMin (integer: minutes since last accessed) — use it for time-based queries like 'not opened in 30 minutes' or 'inactive for an hour'. Tabs without idleMin have unknown access time.",
     JSON.stringify(
       {
         task: "Select tabs that match the user's natural-language request.",
