@@ -1,14 +1,4 @@
 const {
-  CUSTOM_AI_MODEL_OPTION_VALUE,
-  applyAIProviderPreset,
-  detectAIProviderPreset,
-  populateAIModelSelect,
-  populateAIProviderSelect,
-  resolveAIModelSelection,
-  updateAIKeyPlaceholder
-} = globalThis.AIProviderConfig;
-const { loadInlineSettings, saveInlineSettings } = globalThis.AITabInlineSettings;
-const {
   SEARCH_ACTIONS,
   buildEntries,
   buildNaturalEntries,
@@ -113,7 +103,7 @@ async function initialize() {
   });
 
   const settingsButton = createToolbarButton("设置", async () => {
-    await enterSettingsView();
+    await openSettingsPage();
   });
 
   const headerButtons = [arrangeButton, settingsButton];
@@ -185,7 +175,7 @@ async function initialize() {
     const activeEntry = entries[selectedIndex];
     const hasActiveTabEntry = supportsActions(activeEntry);
 
-    if (event.key === "Escape" && (searchMode === "natural" || searchMode === "settings")) {
+    if (event.key === "Escape" && searchMode === "natural") {
       searchMode = "default";
       naturalPreview = null;
       headerFocusIndex = -1;
@@ -368,12 +358,6 @@ async function initialize() {
       return;
     }
 
-    if (searchMode === "settings") {
-      renderFooter();
-      renderSettingsView();
-      return;
-    }
-
     entries = searchMode === "natural" && naturalPreview ? buildNaturalEntries(naturalPreview) : buildEntries(tabs, input.value.trim());
     selectedIndex = normalizeIndex(selectedIndex, entries);
 
@@ -442,186 +426,6 @@ async function initialize() {
     loading.appendChild(spinner);
     loading.appendChild(label);
     list.appendChild(loading);
-  }
-
-  async function enterSettingsView() {
-    searchMode = "settings";
-    naturalPreview = null;
-    headerFocusIndex = -1;
-    footerFocusIndex = -1;
-    selectedIndex = -1;
-    selectedAction = null;
-    hoveredIndex = null;
-    updateHint();
-    renderFooter();
-    renderSettingsView();
-  }
-
-  function renderSettingsView() {
-    entries = [];
-    rowNodes = [];
-    list.textContent = "";
-
-    const shell = document.createElement("div");
-    setStyles(shell, {
-      display: "flex",
-      flexDirection: "column",
-      gap: "12px",
-      padding: "4px 0 10px",
-      minWidth: "0"
-    });
-
-    const title = document.createElement("div");
-    title.textContent = "设置";
-    setStyles(title, {
-      padding: "4px 10px 0",
-      fontSize: "14px",
-      fontWeight: "700",
-      color: "#0f172a"
-    });
-
-    const helper = document.createElement("div");
-    helper.textContent = "设置主题色、服务商、AI 接口和整理偏好，切换服务商会带入推荐地址和模型。";
-    setStyles(helper, {
-      padding: "0 10px",
-      fontSize: "12px",
-      color: "rgba(15, 23, 42, 0.62)"
-    });
-
-    const status = document.createElement("div");
-    setStyles(status, {
-      padding: "0 10px",
-      fontSize: "12px",
-      color: "rgba(15, 23, 42, 0.72)",
-      minHeight: "18px"
-    });
-
-    const providerField = createSettingsSelect("服务商");
-    populateAIProviderSelect(providerField.input);
-
-    const endpointField = createSettingsField("接口地址", "url", "https://api.openai.com/v1/chat/completions");
-    const apiKeyField = createSettingsField("API Key", "password", "sk-...");
-    const modelField = createSettingsSelect("模型名");
-    const customModelInput = createSettingsStandaloneInput("text", "输入自定义模型名");
-    customModelInput.style.display = "none";
-    modelField.wrapper.appendChild(customModelInput);
-    const preferenceField = createSettingsTextarea("整理偏好", "例如：工作相关靠前，阅读类折叠，娱乐类靠后。");
-    const toggleField = createSettingsToggle("实验功能：整理后简化网页标题", "整理后尝试为可注入网页写入更短的临时标题。");
-
-    const actionRow = document.createElement("div");
-    setStyles(actionRow, {
-      display: "flex",
-      gap: "8px",
-      padding: "4px 10px 0",
-      flexWrap: "wrap"
-    });
-
-    const saveButton = createToolbarButton("保存设置", async () => {
-      status.textContent = "正在保存…";
-      await saveInlineSettings({
-        providerId: providerField.input.value,
-        endpoint: endpointField.input.value,
-        apiKey: apiKeyField.input.value,
-        model: getCurrentModelValue(),
-        preference: preferenceField.input.value,
-        experimentalTitleRewriteEnabled: toggleField.input.checked
-      });
-      status.textContent = "已保存";
-    });
-
-    const runButton = createToolbarButton("保存并立即整理标签页", async () => {
-      status.textContent = "保存并开始整理…";
-      await saveInlineSettings({
-        providerId: providerField.input.value,
-        endpoint: endpointField.input.value,
-        apiKey: apiKeyField.input.value,
-        model: getCurrentModelValue(),
-        preference: preferenceField.input.value,
-        experimentalTitleRewriteEnabled: toggleField.input.checked
-      });
-      const response = await chrome.runtime.sendMessage({ type: "run-ai-organization", windowId: targetWindowId });
-      status.textContent = response?.summary || response?.reason || (response?.ok ? "已开始" : response?.error || "整理失败");
-      if (response?.ok || response?.skipped) {
-        window.close();
-      }
-    });
-
-    actionRow.appendChild(saveButton);
-    actionRow.appendChild(runButton);
-
-    shell.appendChild(title);
-    shell.appendChild(helper);
-    shell.appendChild(providerField.wrapper);
-    shell.appendChild(endpointField.wrapper);
-    shell.appendChild(apiKeyField.wrapper);
-    shell.appendChild(modelField.wrapper);
-    shell.appendChild(preferenceField.wrapper);
-    shell.appendChild(toggleField.wrapper);
-    shell.appendChild(actionRow);
-    shell.appendChild(status);
-    list.appendChild(shell);
-
-    providerField.input.addEventListener("change", () => {
-      const nextDraft = applyAIProviderPreset(providerField.input.value, {
-        endpoint: endpointField.input.value,
-        apiKey: apiKeyField.input.value,
-        model: getCurrentModelValue(),
-        preference: preferenceField.input.value,
-        experimentalTitleRewriteEnabled: toggleField.input.checked
-      });
-
-      endpointField.input.value = nextDraft.endpoint;
-      syncModelControls(nextDraft.providerId, nextDraft.model);
-      updateAIKeyPlaceholder(apiKeyField.input, nextDraft.providerId);
-    });
-
-    endpointField.input.addEventListener("input", () => {
-      providerField.input.value = detectAIProviderPreset(endpointField.input.value);
-      syncModelControls(providerField.input.value, getCurrentModelValue());
-      updateAIKeyPlaceholder(apiKeyField.input, providerField.input.value);
-    });
-
-    modelField.input.addEventListener("change", () => {
-      const isCustom = modelField.input.value === CUSTOM_AI_MODEL_OPTION_VALUE;
-
-      if (isCustom && !customModelInput.value.trim()) {
-        customModelInput.value = modelField.input.dataset.selectedPresetModel || "";
-      }
-
-      if (!isCustom) {
-        modelField.input.dataset.selectedPresetModel = modelField.input.value;
-      }
-
-      customModelInput.style.display = isCustom ? "block" : "none";
-    });
-
-    loadInlineSettings()
-      .then((settings) => {
-        providerField.input.value = settings.providerId;
-        endpointField.input.value = settings.endpoint;
-        apiKeyField.input.value = settings.apiKey;
-        syncModelControls(settings.providerId, settings.model);
-        preferenceField.input.value = settings.preference;
-        toggleField.input.checked = settings.experimentalTitleRewriteEnabled;
-        updateAIKeyPlaceholder(apiKeyField.input, settings.providerId);
-      })
-      .catch((error) => {
-        status.textContent = error instanceof Error ? error.message : "读取设置失败";
-      });
-
-    function syncModelControls(providerId, modelValue) {
-      const selection = resolveAIModelSelection(providerId, modelValue);
-      populateAIModelSelect(modelField.input, providerId, modelValue);
-      modelField.input.value = selection.selectedValue;
-      modelField.input.dataset.selectedPresetModel =
-        selection.selectedValue === CUSTOM_AI_MODEL_OPTION_VALUE ? selection.options[0]?.value || "" : selection.selectedValue;
-      customModelInput.value = selection.customValue;
-      customModelInput.style.display = selection.selectedValue === CUSTOM_AI_MODEL_OPTION_VALUE ? "block" : "none";
-    }
-
-    function getCurrentModelValue() {
-      return modelField.input.value === CUSTOM_AI_MODEL_OPTION_VALUE ? customModelInput.value.trim() : modelField.input.value;
-    }
   }
 
   function createRow(entry, index) {
@@ -832,7 +636,7 @@ async function initialize() {
     }
 
     if (entry.kind === "command" && entry.command === "settings") {
-      await enterSettingsView();
+      await openSettingsPage();
       return;
     }
 
@@ -920,6 +724,11 @@ async function initialize() {
     rebuildRows();
   }
 
+  async function openSettingsPage() {
+    await chrome.runtime.sendMessage({ type: "open-settings-page" });
+    window.close();
+  }
+
   function updateHint() {
     if (isNaturalLoading) {
       hint.textContent = "自然语言搜索中…";
@@ -930,11 +739,6 @@ async function initialize() {
       hint.textContent = naturalPreview?.rationale
         ? `自然语言结果：${naturalPreview.rationale} · Esc 返回普通搜索`
         : "自然语言结果 · Esc 返回普通搜索";
-      return;
-    }
-
-    if (searchMode === "settings") {
-      hint.textContent = "设置视图 · Esc 返回普通搜索";
       return;
     }
 
@@ -1098,174 +902,6 @@ function updateActionSelection(buttons, selectedAction) {
 
 function isCaretAtEnd(input) {
   return input.selectionStart === input.selectionEnd && input.selectionEnd === input.value.length;
-}
-
-function createSettingsField(label, type, placeholder) {
-  const wrapper = document.createElement("label");
-  setStyles(wrapper, {
-    display: "flex",
-    flexDirection: "column",
-    gap: "6px",
-    padding: "0 10px",
-    fontSize: "12px",
-    color: "#0f172a"
-  });
-
-  const text = document.createElement("span");
-  text.textContent = label;
-
-  const input = document.createElement("input");
-  input.type = type;
-  input.placeholder = placeholder;
-  setStyles(input, {
-    width: "100%",
-    border: "1px solid rgba(15, 23, 42, 0.12)",
-    borderRadius: "12px",
-    padding: "10px 12px",
-    paddingRight: "40px",
-    outline: "none",
-    background: "#ffffff",
-    appearance: "none",
-    WebkitAppearance: "none",
-    backgroundImage:
-      "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2 4.5L6 8L10 4.5' stroke='%236d6d67' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")",
-    backgroundRepeat: "no-repeat",
-    backgroundPosition: "right 14px center",
-    backgroundSize: "12px 12px",
-    color: "#0f172a",
-    fontSize: "13px"
-  });
-
-  wrapper.appendChild(text);
-  wrapper.appendChild(input);
-  return { wrapper, input };
-}
-
-function createSettingsSelect(label) {
-  const wrapper = document.createElement("label");
-  setStyles(wrapper, {
-    display: "flex",
-    flexDirection: "column",
-    gap: "6px",
-    padding: "0 10px",
-    fontSize: "12px",
-    color: "#0f172a"
-  });
-
-  const text = document.createElement("span");
-  text.textContent = label;
-
-  const input = document.createElement("select");
-  setStyles(input, {
-    width: "100%",
-    border: "1px solid rgba(15, 23, 42, 0.12)",
-    borderRadius: "12px",
-    padding: "10px 12px",
-    outline: "none",
-    background: "#ffffff",
-    color: "#0f172a",
-    fontSize: "13px"
-  });
-
-  wrapper.appendChild(text);
-  wrapper.appendChild(input);
-  return { wrapper, input };
-}
-
-function createSettingsStandaloneInput(type, placeholder) {
-  const input = document.createElement("input");
-  input.type = type;
-  input.placeholder = placeholder;
-  setStyles(input, {
-    width: "100%",
-    border: "1px solid rgba(15, 23, 42, 0.12)",
-    borderRadius: "12px",
-    padding: "10px 12px",
-    outline: "none",
-    background: "#ffffff",
-    color: "#0f172a",
-    fontSize: "13px"
-  });
-  return input;
-}
-
-function createSettingsTextarea(label, placeholder) {
-  const wrapper = document.createElement("label");
-  setStyles(wrapper, {
-    display: "flex",
-    flexDirection: "column",
-    gap: "6px",
-    padding: "0 10px",
-    fontSize: "12px",
-    color: "#0f172a"
-  });
-
-  const text = document.createElement("span");
-  text.textContent = label;
-
-  const input = document.createElement("textarea");
-  input.rows = 4;
-  input.placeholder = placeholder;
-  setStyles(input, {
-    width: "100%",
-    border: "1px solid rgba(15, 23, 42, 0.12)",
-    borderRadius: "12px",
-    padding: "10px 12px",
-    outline: "none",
-    background: "#ffffff",
-    color: "#0f172a",
-    fontSize: "13px",
-    resize: "vertical"
-  });
-
-  wrapper.appendChild(text);
-  wrapper.appendChild(input);
-  return { wrapper, input };
-}
-
-function createSettingsToggle(label, helper) {
-  const wrapper = document.createElement("label");
-  setStyles(wrapper, {
-    display: "flex",
-    alignItems: "flex-start",
-    gap: "10px",
-    padding: "4px 10px 0"
-  });
-
-  const input = document.createElement("input");
-  input.type = "checkbox";
-  setStyles(input, {
-    marginTop: "2px"
-  });
-
-  const content = document.createElement("div");
-  setStyles(content, {
-    display: "flex",
-    flexDirection: "column",
-    gap: "4px",
-    minWidth: "0"
-  });
-
-  const title = document.createElement("div");
-  title.textContent = label;
-  setStyles(title, {
-    fontSize: "13px",
-    fontWeight: "600",
-    color: "#0f172a"
-  });
-
-  const sub = document.createElement("div");
-  sub.textContent = helper;
-  setStyles(sub, {
-    fontSize: "12px",
-    color: "rgba(15, 23, 42, 0.62)"
-  });
-
-  content.appendChild(title);
-  content.appendChild(sub);
-  wrapper.appendChild(input);
-  wrapper.appendChild(content);
-  return { wrapper, input };
 }
 
 function ensureSpinnerStyle() {

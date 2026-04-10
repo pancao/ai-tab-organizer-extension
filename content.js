@@ -1,14 +1,4 @@
 const {
-  CUSTOM_AI_MODEL_OPTION_VALUE,
-  applyAIProviderPreset,
-  detectAIProviderPreset,
-  populateAIModelSelect,
-  populateAIProviderSelect,
-  resolveAIModelSelection,
-  updateAIKeyPlaceholder
-} = globalThis.AIProviderConfig;
-const { loadInlineSettings, saveInlineSettings } = globalThis.AITabInlineSettings;
-const {
   SEARCH_ACTIONS,
   buildEntries,
   buildNaturalEntries,
@@ -48,14 +38,6 @@ const THEME_COLORS_CONFIG = {
   purple: { accent: "#7c3aed", light: { page: "#f5f0ff", surface: "rgba(245,240,255,0.82)", inputBg: "rgba(255,255,255,0.82)", border: "rgba(124,58,237,0.14)", text: "#0f172a", muted: "rgba(124,58,237,0.50)", subtleBg: "rgba(124,58,237,0.07)", hoverBg: "rgba(124,58,237,0.20)", selectedBg: "rgba(124,58,237,0.20)", overlayBg: "rgba(24,16,42,0.18)", commandBg: "rgba(124,58,237,0.10)", commandText: "#6d28d9", commandMuted: "rgba(109,40,217,0.78)", urlShadow: "rgba(124,58,237,0.12)" }, dark: { page: "#18102a", surface: "rgba(34,24,64,0.88)", inputBg: "rgba(40,30,72,0.82)", border: "rgba(167,139,250,0.16)", text: "#e5e5e5", muted: "rgba(196,181,253,0.55)", subtleBg: "rgba(167,139,250,0.08)", hoverBg: "rgba(167,139,250,0.26)", selectedBg: "rgba(167,139,250,0.26)", overlayBg: "rgba(0,0,0,0.50)", commandBg: "rgba(167,139,250,0.12)", commandText: "#c4b5fd", commandMuted: "rgba(196,181,253,0.78)", urlShadow: "rgba(167,139,250,0.10)" } },
   orange: { accent: "#ea580c", light: { page: "#fff6ed", surface: "rgba(255,246,237,0.82)", inputBg: "rgba(255,255,255,0.82)", border: "rgba(234,88,12,0.14)", text: "#0f172a", muted: "rgba(234,88,12,0.50)", subtleBg: "rgba(234,88,12,0.07)", hoverBg: "rgba(234,88,12,0.20)", selectedBg: "rgba(234,88,12,0.20)", overlayBg: "rgba(31,18,8,0.18)", commandBg: "rgba(234,88,12,0.10)", commandText: "#c2410c", commandMuted: "rgba(194,65,12,0.78)", urlShadow: "rgba(234,88,12,0.12)" }, dark: { page: "#1f1208", surface: "rgba(42,26,16,0.88)", inputBg: "rgba(48,32,21,0.82)", border: "rgba(251,146,60,0.16)", text: "#e5e5e5", muted: "rgba(253,186,116,0.55)", subtleBg: "rgba(251,146,60,0.08)", hoverBg: "rgba(251,146,60,0.26)", selectedBg: "rgba(251,146,60,0.26)", overlayBg: "rgba(0,0,0,0.50)", commandBg: "rgba(251,146,60,0.12)", commandText: "#fdba74", commandMuted: "rgba(253,186,116,0.78)", urlShadow: "rgba(251,146,60,0.10)" } }
 };
-
-const THEME_SWATCH_COLORS = [
-  { key: "neutral", bg: "#1f1f1c", label: "默认" },
-  { key: "blue", bg: "#2563eb", label: "蓝色" },
-  { key: "green", bg: "#16a34a", label: "绿色" },
-  { key: "purple", bg: "#7c3aed", label: "紫色" },
-  { key: "orange", bg: "#ea580c", label: "橙色" }
-];
 
 async function getThemeTokens() {
   const { themeColor, themeMode } = await chrome.storage.local.get(["themeColor", "themeMode"]);
@@ -112,11 +94,6 @@ async function openTabSearch(prefetchedTabs) {
   let isNaturalLoading = false;
 
   let t = theme.tokens;
-
-  async function reloadTheme() {
-    theme = await getThemeTokens();
-    t = theme.tokens;
-  }
 
   const overlay = document.createElement("div");
   overlay.id = OVERLAY_ID;
@@ -238,7 +215,7 @@ async function openTabSearch(prefetchedTabs) {
   }, t);
 
   const settingsButton = createToolbarButton("设置", async () => {
-    await enterSettingsView();
+    await openSettingsPage();
   }, t);
   settingsButton.innerHTML = BUTTON_ICONS["设置"];
   settingsButton.title = "设置";
@@ -327,7 +304,7 @@ async function openTabSearch(prefetchedTabs) {
     const hasActiveTabEntry = supportsActions(activeEntry);
 
     if (event.key === "Escape") {
-      if (searchMode === "natural" || searchMode === "settings") {
+      if (searchMode === "natural") {
         searchMode = "default";
         naturalPreview = null;
         headerFocusIndex = -1;
@@ -520,12 +497,6 @@ async function openTabSearch(prefetchedTabs) {
       return;
     }
 
-    if (searchMode === "settings") {
-      renderFooter();
-      renderSettingsView();
-      return;
-    }
-
     entries = searchMode === "natural" && naturalPreview ? buildNaturalEntries(naturalPreview) : buildEntries(tabs, input.value.trim());
     selectedIndex = normalizeIndex(selectedIndex, entries);
 
@@ -594,198 +565,6 @@ async function openTabSearch(prefetchedTabs) {
     loading.appendChild(spinner);
     loading.appendChild(label);
     list.appendChild(loading);
-  }
-
-  async function enterSettingsView() {
-    searchMode = "settings";
-    naturalPreview = null;
-    headerFocusIndex = -1;
-    footerFocusIndex = -1;
-    selectedIndex = -1;
-    selectedAction = null;
-    hoveredIndex = null;
-
-    renderFooter();
-    renderSettingsView();
-  }
-
-  function renderSettingsView() {
-    entries = [];
-    rowNodes = [];
-    list.textContent = "";
-
-    const shell = document.createElement("div");
-    setStyles(shell, {
-      display: "flex",
-      flexDirection: "column",
-      gap: "12px",
-      padding: "4px 4px 10px",
-      minWidth: "0"
-    });
-
-    const title = document.createElement("div");
-    title.textContent = "设置";
-    setStyles(title, {
-      padding: "4px 10px 0",
-      fontSize: "14px",
-      fontWeight: "700",
-      color: theme.accent
-    });
-
-    const helper = document.createElement("div");
-    helper.textContent = "设置主题色、服务商、AI 接口和整理偏好";
-    setStyles(helper, {
-      padding: "0 10px",
-      fontSize: "12px",
-      color: t.muted
-    });
-
-    const themeRow = createThemePicker(t, theme, async (newColor, newMode) => {
-      if (newColor !== undefined) {
-        await chrome.storage.local.set({ themeColor: newColor });
-      }
-      if (newMode !== undefined) {
-        await chrome.storage.local.set({ themeMode: newMode });
-      }
-      await reloadTheme();
-      applyThemeToPanel();
-    });
-
-    const status = document.createElement("div");
-    setStyles(status, {
-      padding: "0 10px",
-      fontSize: "12px",
-      color: t.muted,
-      minHeight: "18px"
-    });
-
-    const providerField = createSettingsSelect("服务商", t);
-    populateAIProviderSelect(providerField.input);
-
-    const endpointField = createSettingsField("接口地址", "text", "https://api.openai.com/v1/chat/completions", t);
-    const apiKeyField = createSettingsField("API Key", "password", "sk-...", t);
-    const modelField = createSettingsSelect("模型名", t);
-    const customModelInput = createSettingsStandaloneInput("text", "输入自定义模型名", t);
-    customModelInput.style.display = "none";
-    modelField.wrapper.appendChild(customModelInput);
-    const preferenceField = createSettingsTextarea("整理偏好", "例如：工作相关靠前，阅读类折叠，娱乐类靠后。", t);
-    const toggleField = createSettingsToggle("实验功能：整理后简化网页标题", "整理后尝试为可注入网页写入更短的临时标题。", t, theme.accent);
-
-    const actionRow = document.createElement("div");
-    setStyles(actionRow, {
-      display: "flex",
-      gap: "8px",
-      padding: "4px 10px 0",
-      flexWrap: "wrap"
-    });
-
-    const saveButton = createToolbarButton("保存设置", async () => {
-      status.textContent = "正在保存…";
-      await saveInlineSettings({
-        providerId: providerField.input.value,
-        endpoint: endpointField.input.value,
-        apiKey: apiKeyField.input.value,
-        model: getCurrentModelValue(),
-        preference: preferenceField.input.value,
-        experimentalTitleRewriteEnabled: toggleField.input.checked
-      });
-      status.textContent = "已保存";
-    }, t);
-
-    const runButton = createToolbarButton("保存并立即整理标签页", async () => {
-      status.textContent = "保存并开始整理…";
-      await saveInlineSettings({
-        providerId: providerField.input.value,
-        endpoint: endpointField.input.value,
-        apiKey: apiKeyField.input.value,
-        model: getCurrentModelValue(),
-        preference: preferenceField.input.value,
-        experimentalTitleRewriteEnabled: toggleField.input.checked
-      });
-      const response = await chrome.runtime.sendMessage({ type: "run-ai-organization" });
-      status.textContent = response?.summary || response?.reason || (response?.ok ? "已开始" : response?.error || "整理失败");
-      if (response?.ok || response?.skipped) {
-        close();
-      }
-    }, t);
-
-    actionRow.appendChild(saveButton);
-    actionRow.appendChild(runButton);
-
-    shell.appendChild(title);
-    shell.appendChild(helper);
-    shell.appendChild(themeRow);
-    shell.appendChild(providerField.wrapper);
-    shell.appendChild(endpointField.wrapper);
-    shell.appendChild(apiKeyField.wrapper);
-    shell.appendChild(modelField.wrapper);
-    shell.appendChild(preferenceField.wrapper);
-    shell.appendChild(toggleField.wrapper);
-    shell.appendChild(actionRow);
-    shell.appendChild(status);
-    list.appendChild(shell);
-
-    providerField.input.addEventListener("change", () => {
-      const nextDraft = applyAIProviderPreset(providerField.input.value, {
-        endpoint: endpointField.input.value,
-        apiKey: apiKeyField.input.value,
-        model: getCurrentModelValue(),
-        preference: preferenceField.input.value,
-        experimentalTitleRewriteEnabled: toggleField.input.checked
-      });
-
-      endpointField.input.value = nextDraft.endpoint;
-      syncModelControls(nextDraft.providerId, nextDraft.model);
-      updateAIKeyPlaceholder(apiKeyField.input, nextDraft.providerId);
-    });
-
-    endpointField.input.addEventListener("input", () => {
-      providerField.input.value = detectAIProviderPreset(endpointField.input.value);
-      syncModelControls(providerField.input.value, getCurrentModelValue());
-      updateAIKeyPlaceholder(apiKeyField.input, providerField.input.value);
-    });
-
-    modelField.input.addEventListener("change", () => {
-      const isCustom = modelField.input.value === CUSTOM_AI_MODEL_OPTION_VALUE;
-
-      if (isCustom && !customModelInput.value.trim()) {
-        customModelInput.value = modelField.input.dataset.selectedPresetModel || "";
-      }
-
-      if (!isCustom) {
-        modelField.input.dataset.selectedPresetModel = modelField.input.value;
-      }
-
-      customModelInput.style.display = isCustom ? "block" : "none";
-    });
-
-    loadInlineSettings()
-      .then((settings) => {
-        providerField.input.value = settings.providerId;
-        endpointField.input.value = settings.endpoint;
-        apiKeyField.input.value = settings.apiKey;
-        syncModelControls(settings.providerId, settings.model);
-        preferenceField.input.value = settings.preference;
-        toggleField.input.checked = settings.experimentalTitleRewriteEnabled;
-        updateAIKeyPlaceholder(apiKeyField.input, settings.providerId);
-      })
-      .catch((error) => {
-        status.textContent = error instanceof Error ? error.message : "读取设置失败";
-      });
-
-    function syncModelControls(providerId, modelValue) {
-      const selection = resolveAIModelSelection(providerId, modelValue);
-      populateAIModelSelect(modelField.input, providerId, modelValue);
-      modelField.input.value = selection.selectedValue;
-      modelField.input.dataset.selectedPresetModel =
-        selection.selectedValue === CUSTOM_AI_MODEL_OPTION_VALUE ? selection.options[0]?.value || "" : selection.selectedValue;
-      customModelInput.value = selection.customValue;
-      customModelInput.style.display = selection.selectedValue === CUSTOM_AI_MODEL_OPTION_VALUE ? "block" : "none";
-    }
-
-    function getCurrentModelValue() {
-      return modelField.input.value === CUSTOM_AI_MODEL_OPTION_VALUE ? customModelInput.value.trim() : modelField.input.value;
-    }
   }
 
   function createRow(entry, index) {
@@ -979,18 +758,6 @@ async function openTabSearch(prefetchedTabs) {
     return { container, buttons };
   }
 
-  function applyThemeToPanel() {
-    overlay.style.background = t.overlayBg;
-    panel.style.background = t.surface;
-    panel.style.borderColor = t.border;
-    input.style.color = t.text;
-    clearButton.style.background = t.subtleBg;
-    clearButton.style.color = t.muted;
-    footer.style.background = t.surface;
-    footer.style.borderTopColor = t.border;
-    updateInteractiveState();
-  }
-
   function updateInteractiveState() {
     headerButtons.forEach((button, index) => {
       const selected = headerFocusIndex === index;
@@ -1053,7 +820,7 @@ async function openTabSearch(prefetchedTabs) {
     }
 
     if (entry.kind === "command" && entry.command === "settings") {
-      await enterSettingsView();
+      await openSettingsPage();
       return;
     }
 
@@ -1129,6 +896,11 @@ async function openTabSearch(prefetchedTabs) {
     selectedAction = null;
     hoveredIndex = null;
     rebuildRows();
+  }
+
+  async function openSettingsPage() {
+    await chrome.runtime.sendMessage({ type: "open-settings-page" });
+    close();
   }
 
   function renderFooter() {
@@ -1311,291 +1083,6 @@ function formatLastAccessed(lastAccessed) {
 
 function isCaretAtEnd(input) {
   return input.selectionStart === input.selectionEnd && input.selectionEnd === input.value.length;
-}
-
-function createSettingsField(label, type, placeholder, tokens) {
-  const fg = (tokens && tokens.text) || "#0f172a";
-  const inputBg = (tokens && tokens.inputBg) || "rgba(255, 255, 255, 0.42)";
-  const borderC = (tokens && tokens.border) || "rgba(15, 23, 42, 0.10)";
-  const settingsInputBg = inputBg.replace(/[\d.]+\)$/, "0.42)");
-  const settingsBorderC = borderC.replace(/[\d.]+\)$/, "0.10)");
-  const wrapper = document.createElement("label");
-  setStyles(wrapper, {
-    display: "flex",
-    flexDirection: "column",
-    gap: "6px",
-    padding: "0 10px",
-    fontSize: "12px",
-    color: fg
-  });
-
-  const text = document.createElement("span");
-  text.textContent = label;
-  setStyles(text, { fontWeight: "700" });
-
-  const input = document.createElement("input");
-  input.type = type;
-  input.placeholder = placeholder;
-  input.autocomplete = "off";
-  input.setAttribute("data-lpignore", "true");
-  input.setAttribute("data-1p-ignore", "true");
-  input.setAttribute("data-form-type", "other");
-  setStyles(input, {
-    width: "100%",
-    border: `1px solid ${settingsBorderC}`,
-    borderRadius: "12px",
-    padding: "10px 12px",
-    outline: "none",
-    background: settingsInputBg,
-    color: fg,
-    fontSize: "13px"
-  });
-
-  wrapper.appendChild(text);
-  wrapper.appendChild(input);
-  return { wrapper, input };
-}
-
-function createSettingsSelect(label, tokens) {
-  const fg = (tokens && tokens.text) || "#0f172a";
-  const inputBg = (tokens && tokens.inputBg) || "rgba(255, 255, 255, 0.42)";
-  const borderC = (tokens && tokens.border) || "rgba(15, 23, 42, 0.10)";
-  const settingsInputBg = inputBg.replace(/[\d.]+\)$/, "0.42)");
-  const settingsBorderC = borderC.replace(/[\d.]+\)$/, "0.10)");
-  const wrapper = document.createElement("label");
-  setStyles(wrapper, {
-    display: "flex",
-    flexDirection: "column",
-    gap: "6px",
-    padding: "0 10px",
-    fontSize: "12px",
-    color: fg
-  });
-
-  const text = document.createElement("span");
-  text.textContent = label;
-  setStyles(text, { fontWeight: "700" });
-
-  const input = document.createElement("select");
-  setStyles(input, {
-    width: "100%",
-    border: `1px solid ${settingsBorderC}`,
-    borderRadius: "12px",
-    padding: "10px 12px",
-    outline: "none",
-    background: settingsInputBg,
-    color: fg,
-    fontSize: "13px"
-  });
-
-  wrapper.appendChild(text);
-  wrapper.appendChild(input);
-  return { wrapper, input };
-}
-
-function createSettingsStandaloneInput(type, placeholder, tokens) {
-  const fg = (tokens && tokens.text) || "#0f172a";
-  const inputBg = (tokens && tokens.inputBg) || "rgba(255, 255, 255, 0.42)";
-  const borderC = (tokens && tokens.border) || "rgba(15, 23, 42, 0.10)";
-  const settingsInputBg = inputBg.replace(/[\d.]+\)$/, "0.42)");
-  const settingsBorderC = borderC.replace(/[\d.]+\)$/, "0.10)");
-  const input = document.createElement("input");
-  input.type = type;
-  input.placeholder = placeholder;
-  setStyles(input, {
-    width: "100%",
-    border: `1px solid ${settingsBorderC}`,
-    borderRadius: "12px",
-    padding: "10px 12px",
-    outline: "none",
-    background: settingsInputBg,
-    color: fg,
-    fontSize: "13px"
-  });
-  return input;
-}
-
-function createSettingsTextarea(label, placeholder, tokens) {
-  const fg = (tokens && tokens.text) || "#0f172a";
-  const inputBg = (tokens && tokens.inputBg) || "rgba(255, 255, 255, 0.42)";
-  const borderC = (tokens && tokens.border) || "rgba(15, 23, 42, 0.10)";
-  const settingsInputBg = inputBg.replace(/[\d.]+\)$/, "0.42)");
-  const settingsBorderC = borderC.replace(/[\d.]+\)$/, "0.10)");
-  const wrapper = document.createElement("label");
-  setStyles(wrapper, {
-    display: "flex",
-    flexDirection: "column",
-    gap: "6px",
-    padding: "0 10px",
-    fontSize: "12px",
-    color: fg
-  });
-
-  const text = document.createElement("span");
-  text.textContent = label;
-  setStyles(text, { fontWeight: "700" });
-
-  const input = document.createElement("textarea");
-  input.rows = 4;
-  input.placeholder = placeholder;
-  setStyles(input, {
-    width: "100%",
-    border: `1px solid ${settingsBorderC}`,
-    borderRadius: "12px",
-    padding: "10px 12px",
-    outline: "none",
-    background: settingsInputBg,
-    color: fg,
-    fontSize: "13px",
-    resize: "vertical"
-  });
-
-  wrapper.appendChild(text);
-  wrapper.appendChild(input);
-  return { wrapper, input };
-}
-
-function createSettingsToggle(label, helper, tokens, accentColor) {
-  const fg = (tokens && tokens.text) || "#0f172a";
-  const mutedC = (tokens && tokens.muted) || "rgba(15, 23, 42, 0.62)";
-  const wrapper = document.createElement("label");
-  setStyles(wrapper, {
-    display: "flex",
-    alignItems: "flex-start",
-    gap: "10px",
-    padding: "4px 10px 0"
-  });
-
-  const input = document.createElement("input");
-  input.type = "checkbox";
-  setStyles(input, {
-    marginTop: "2px",
-    accentColor: accentColor || "auto"
-  });
-
-  const content = document.createElement("div");
-  setStyles(content, {
-    display: "flex",
-    flexDirection: "column",
-    gap: "4px",
-    minWidth: "0"
-  });
-
-  const title = document.createElement("div");
-  title.textContent = label;
-  setStyles(title, {
-    fontSize: "13px",
-    fontWeight: "600",
-    color: fg
-  });
-
-  const sub = document.createElement("div");
-  sub.textContent = helper;
-  setStyles(sub, {
-    fontSize: "12px",
-    color: mutedC
-  });
-
-  content.appendChild(title);
-  content.appendChild(sub);
-  wrapper.appendChild(input);
-  wrapper.appendChild(content);
-  return { wrapper, input };
-}
-
-function createThemePicker(tokens, currentTheme, onChange) {
-  const fg = (tokens && tokens.text) || "#0f172a";
-  const bg = (tokens && tokens.subtleBg) || "rgba(15, 23, 42, 0.08)";
-  const borderC = (tokens && tokens.border) || "rgba(15, 23, 42, 0.12)";
-
-  const row = document.createElement("div");
-  setStyles(row, {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "12px",
-    padding: "6px 10px",
-    marginBottom: "4px"
-  });
-
-  const swatchRow = document.createElement("div");
-  setStyles(swatchRow, { display: "flex", gap: "8px" });
-
-  THEME_SWATCH_COLORS.forEach((swatch) => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.title = swatch.label;
-    setStyles(btn, {
-      width: "28px",
-      height: "28px",
-      borderRadius: "50%",
-      border: swatch.key === currentTheme.color ? `2px solid ${fg}` : "2px solid transparent",
-      background: swatch.bg,
-      cursor: "pointer",
-      padding: "0",
-      outline: "none",
-      transition: "border-color 120ms ease, transform 120ms ease"
-    });
-    btn.addEventListener("mouseenter", () => { btn.style.transform = "scale(1.12)"; });
-    btn.addEventListener("mouseleave", () => { btn.style.transform = "scale(1)"; });
-    btn.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      onChange(swatch.key, undefined);
-      swatchRow.querySelectorAll("button").forEach((b) => { b.style.borderColor = "transparent"; });
-      btn.style.borderColor = fg;
-    });
-    swatchRow.appendChild(btn);
-  });
-
-  const modeBtn = document.createElement("button");
-  modeBtn.type = "button";
-  modeBtn.title = "切换深浅色";
-  modeBtn.dataset.mode = currentTheme.mode;
-  modeBtn.innerHTML = `
-    <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 6px;pointer-events:none;color:${tokens.muted}">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-    </span>
-    <span style="position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:${tokens.inputBg};box-shadow:0 1px 3px rgba(0,0,0,0.18);transition:transform 180ms ease;pointer-events:none;display:flex;align-items:center;justify-content:center;color:${currentTheme.accent};transform:${currentTheme.mode === "dark" ? "translateX(28px)" : "none"}">
-      ${currentTheme.mode === "dark"
-      ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
-      : '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>'}
-    </span>
-  `;
-  setStyles(modeBtn, {
-    position: "relative",
-    display: "inline-flex",
-    alignItems: "center",
-    width: "56px",
-    height: "28px",
-    padding: "0",
-    border: `1px solid ${borderC}`,
-    borderRadius: "999px",
-    background: bg,
-    cursor: "pointer",
-    flexShrink: "0"
-  });
-  modeBtn.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const next = currentTheme.mode === "dark" ? "light" : "dark";
-    currentTheme.mode = next;
-    modeBtn.dataset.mode = next;
-    const thumb = modeBtn.querySelector("span:last-child");
-    if (thumb) {
-      thumb.style.transform = next === "dark" ? "translateX(28px)" : "none";
-      thumb.style.color = currentTheme.accent;
-      thumb.innerHTML = next === "dark"
-        ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
-        : '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>';
-    }
-    onChange(undefined, next);
-  });
-
-  row.appendChild(swatchRow);
-  row.appendChild(modeBtn);
-  return row;
 }
 
 function ensureSpinnerStyle() {
