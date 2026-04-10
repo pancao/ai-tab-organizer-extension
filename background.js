@@ -1,5 +1,5 @@
-const DEFAULT_AI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
-const DEFAULT_AI_MODEL = "gpt-4.1-mini";
+import { resolveBackgroundAISettings } from "./background-ai-settings.mjs";
+
 const TAB_GROUP_COLORS = ["grey", "blue", "red", "yellow", "green", "pink", "purple", "cyan", "orange"];
 const SEARCH_PANEL_BLOCKED_PROTOCOLS = ["about:", "brave:", "chrome:", "edge:", "vivaldi:"];
 const TITLE_REWRITE_MAX_LENGTH = 24;
@@ -572,13 +572,7 @@ async function getAISettings() {
     "experimentalTitleRewriteEnabled"
   ]);
 
-  return {
-    endpoint: normalizeEndpoint(stored.aiEndpoint || DEFAULT_AI_ENDPOINT),
-    apiKey: stored.aiApiKey || "",
-    model: stored.aiModel || DEFAULT_AI_MODEL,
-    preference: stored.aiPreference || "",
-    experimentalTitleRewriteEnabled: Boolean(stored.experimentalTitleRewriteEnabled)
-  };
+  return resolveBackgroundAISettings(stored);
 }
 
 async function getSearchableTabs() {
@@ -920,26 +914,6 @@ function parseJsonFromText(text) {
     }
 
     throw new Error("AI 返回的不是合法 JSON。");
-  }
-}
-
-function normalizeEndpoint(endpoint) {
-  const value = String(endpoint || "").trim();
-
-  if (!value) {
-    return DEFAULT_AI_ENDPOINT;
-  }
-
-  try {
-    const url = new URL(value);
-
-    if (url.pathname === "/" || url.pathname === "" || url.pathname === "/v1" || url.pathname === "/v1/") {
-      url.pathname = "/v1/chat/completions";
-    }
-
-    return url.toString();
-  } catch (_error) {
-    return value;
   }
 }
 
