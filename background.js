@@ -1,3 +1,5 @@
+import { getCandidateTabs } from "./background-core.mjs";
+
 const DEFAULT_AI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 const DEFAULT_AI_MODEL = "gpt-4.1-mini";
 const TAB_GROUP_COLORS = ["grey", "blue", "red", "yellow", "green", "pink", "purple", "cyan", "orange"];
@@ -968,10 +970,6 @@ function deriveBatchLabel(query, tabs) {
 
   const firstDomain = safeGetDomain(tabs[0]?.url || "");
   return firstDomain || "Arc Tabs";
-}
-
-function getCandidateTabs(tabs) {
-  return tabs.filter((tab) => !tab.pinned && tab.id);
 }
 
 function isSearchPanelBlockedTab(url) {
