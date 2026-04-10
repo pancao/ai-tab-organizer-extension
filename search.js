@@ -1,17 +1,24 @@
 const {
-  AI_PROVIDER_STORAGE_KEY,
   CUSTOM_AI_MODEL_OPTION_VALUE,
   applyAIProviderPreset,
   detectAIProviderPreset,
-  normalizeAIEndpoint,
   populateAIModelSelect,
   populateAIProviderSelect,
   resolveAIModelSelection,
-  resolveAISettingsDraft,
   updateAIKeyPlaceholder
 } = globalThis.AIProviderConfig;
+const { loadInlineSettings, saveInlineSettings } = globalThis.AITabInlineSettings;
+const {
+  SEARCH_ACTIONS,
+  buildEntries,
+  buildNaturalEntries,
+  cycleAction,
+  defaultActionForEntry,
+  normalizeIndex,
+  supportsActions
+} = globalThis.AITabSearchCore;
 
-const ACTIONS = ["open", "close", "bookmark_close"];
+const ACTIONS = SEARCH_ACTIONS;
 const NATURAL_BATCH_ACTIONS = [
   { action: "bookmark_close", label: "关闭并加入收藏" },
   { action: "delete", label: "关闭搜索到的Tab" },
@@ -1089,144 +1096,6 @@ function updateActionSelection(buttons, selectedAction) {
   });
 }
 
-function buildEntries(tabs, query) {
-  const entries = [];
-  const trimmed = query.trim();
-  const normalized = trimmed.toLowerCase();
-  const settingsMatched = isSettingsCommand(trimmed, normalized);
-
-  if (settingsMatched) {
-    entries.push({
-      id: "command-settings",
-      kind: "command",
-      command: "settings",
-      title: "设置",
-      subtitle: "设置主题色、服务商、AI 接口和整理偏好"
-    });
-  }
-
-  if (settingsMatched) {
-    return entries;
-  }
-
-  if (normalized === "arrange") {
-    entries.push({
-      id: "command-arrange",
-      kind: "command",
-      command: "arrange",
-      title: "整理标签页",
-      subtitle: "智能整理并分组所有标签页"
-    });
-  }
-
-  const matchingTabs = filterTabs(tabs, trimmed).map((tab) => ({
-    id: `tab-${tab.id}`,
-    kind: "tab",
-    tabId: tab.id,
-    title: tab.title,
-    subtitle: tab.url,
-    favIconUrl: tab.favIconUrl || ""
-  }));
-
-  entries.push(...matchingTabs);
-
-  const fallbackTarget = matchingTabs.length === 0 && trimmed ? buildFallbackTarget(trimmed) : null;
-
-  if (fallbackTarget) {
-    entries.push({
-      id: `fallback-${fallbackTarget.value}`,
-      kind: "url",
-      url: fallbackTarget.value,
-      title: fallbackTarget.title,
-      subtitle: fallbackTarget.subtitle
-    });
-  }
-
-  if (shouldShowNaturalSearchCommand(trimmed, normalized)) {
-    const naturalEntry = {
-      id: `natural-${trimmed}`,
-      kind: "command",
-      command: "natural-search",
-      title: "自然语言智能搜索",
-      subtitle: "“所有谷歌文档”、“3天没打开过的标签”"
-    };
-    const insertIndex = fallbackTarget ? entries.length : Math.min(1, entries.length);
-    entries.splice(insertIndex, 0, naturalEntry);
-  }
-
-  return entries;
-}
-
-function buildNaturalEntries(preview) {
-  return (preview?.tabs || []).map((tab) => ({
-    id: `tab-${tab.id}`,
-    kind: "tab",
-    tabId: tab.id,
-    title: tab.title,
-    subtitle: tab.url,
-    favIconUrl: tab.favIconUrl || ""
-  }));
-}
-
-function defaultActionForEntry(entry) {
-  return entry.kind === "tab" ? "open" : "run";
-}
-
-function supportsActions(entry) {
-  return entry?.kind === "tab";
-}
-
-function normalizeIndex(index, entries) {
-  if (index === -1) {
-    return -1;
-  }
-
-  if (entries.length === 0) {
-    return 0;
-  }
-
-  return Math.max(0, Math.min(index, entries.length - 1));
-}
-
-function cycleAction(currentAction, direction) {
-  if (!currentAction) {
-    return direction === "backward" ? ACTIONS[ACTIONS.length - 1] : ACTIONS[0];
-  }
-
-  const currentIndex = ACTIONS.indexOf(currentAction);
-
-  if (currentIndex === -1) {
-    return ACTIONS[0];
-  }
-
-  if (direction === "backward") {
-    return ACTIONS[(currentIndex - 1 + ACTIONS.length) % ACTIONS.length];
-  }
-
-  return ACTIONS[(currentIndex + 1) % ACTIONS.length];
-}
-
-function shouldShowNaturalSearchCommand(query, normalizedQuery) {
-  if (!query || normalizedQuery === "arrange") {
-    return false;
-  }
-
-  return getNaturalSearchScore(query) >= 4;
-}
-
-function getNaturalSearchScore(value) {
-  return Array.from(value).reduce((total, char) => total + (/[\u3400-\u9fff]/u.test(char) ? 2 : 1), 0);
-}
-
-function isSettingsCommand(query, normalizedQuery) {
-  return (
-    query.includes("设置") ||
-    normalizedQuery.startsWith("set") ||
-    normalizedQuery.includes("settings") ||
-    normalizedQuery.includes("setting")
-  );
-}
-
 function isCaretAtEnd(input) {
   return input.selectionStart === input.selectionEnd && input.selectionEnd === input.value.length;
 }
@@ -1399,32 +1268,6 @@ function createSettingsToggle(label, helper) {
   return { wrapper, input };
 }
 
-async function loadInlineSettings() {
-  const stored = await chrome.storage.local.get([
-    AI_PROVIDER_STORAGE_KEY,
-    "aiEndpoint",
-    "aiApiKey",
-    "aiModel",
-    "aiPreference",
-    "experimentalTitleRewriteEnabled"
-  ]);
-
-  return resolveAISettingsDraft(stored);
-}
-
-async function saveInlineSettings(settings) {
-  const endpoint = normalizeAIEndpoint(settings.endpoint);
-
-  await chrome.storage.local.set({
-    [AI_PROVIDER_STORAGE_KEY]: settings.providerId || detectAIProviderPreset(endpoint),
-    aiEndpoint: endpoint,
-    aiApiKey: String(settings.apiKey || "").trim(),
-    aiModel: String(settings.model || "").trim(),
-    aiPreference: String(settings.preference || "").trim(),
-    experimentalTitleRewriteEnabled: Boolean(settings.experimentalTitleRewriteEnabled)
-  });
-}
-
 function ensureSpinnerStyle() {
   if (document.getElementById("__ai_tab_organizer_spinner_style__")) {
     return;
@@ -1434,75 +1277,6 @@ function ensureSpinnerStyle() {
   style.id = "__ai_tab_organizer_spinner_style__";
   style.textContent = "@keyframes ai-tab-organizer-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }";
   (document.head || document.documentElement).appendChild(style);
-}
-
-function filterTabs(tabs, query) {
-  if (!query) {
-    return tabs;
-  }
-
-  const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
-
-  return tabs
-    .map((tab) => {
-      const haystack = `${tab.title} ${tab.url}`.toLowerCase();
-      const score = tokens.reduce((total, token) => {
-        if (haystack.includes(token)) {
-          return total + (String(tab.title || "").toLowerCase().includes(token) ? 3 : 1);
-        }
-
-        return total;
-      }, 0);
-
-      return { ...tab, score };
-    })
-    .filter((tab) => tab.score > 0)
-    .sort((left, right) => right.score - left.score);
-}
-
-function normalizeUrl(value) {
-  if (!value || /\s/.test(value)) {
-    return null;
-  }
-
-  try {
-    const url = value.includes("://") ? new URL(value) : new URL(`https://${value}`);
-    return /^https?:$/.test(url.protocol) ? url.toString() : null;
-  } catch (_error) {
-    return null;
-  }
-}
-
-function buildFallbackTarget(value) {
-  const normalized = isLikelyUrl(value) ? normalizeUrl(value) : null;
-
-  if (normalized) {
-    return {
-      value: normalized,
-      title: "打开网址",
-      subtitle: normalized
-    };
-  }
-
-  return {
-    value,
-    title: "搜索",
-    subtitle: value
-  };
-}
-
-function isLikelyUrl(value) {
-  const input = String(value || "").trim();
-
-  if (!input || /\s/.test(input)) {
-    return false;
-  }
-
-  if (/^https?:\/\//i.test(input)) {
-    return true;
-  }
-
-  return /^(localhost(?::\d+)?|(\d{1,3}\.){3}\d{1,3}(?::\d+)?|[a-z0-9-]+(\.[a-z0-9-]+)+)(\/.*)?$/i.test(input);
 }
 
 function setStyles(node, styles) {

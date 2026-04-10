@@ -63,6 +63,8 @@
 
 - `manifest.json`: 扩展权限、弹窗、设置页、快捷键
 - `ai-provider-config.js`: AI 服务商预置和接口归一化逻辑
+- `search-inline-settings.js`: 搜索入口共用的设置读写逻辑
+- `search-core.js`: 页内搜索和独立搜索窗口共用的搜索规则与动作逻辑
 - `background.js`: AI 调用、排序和 tab group 应用逻辑
 - `background.js`: 也负责自然语言筛选 tab、批量分组/删除/书签
 - `content.js`: 页面内标签页搜索面板
