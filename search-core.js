@@ -39,7 +39,8 @@
       });
     }
 
-    const matchingTabs = filterTabs(Array.isArray(tabs) ? tabs : [], trimmed).map((tab) => ({
+    const filteredTabs = filterTabs(Array.isArray(tabs) ? tabs : [], trimmed);
+    const matchingTabs = filteredTabs.map((tab) => ({
       id: `tab-${tab.id}`,
       kind: "tab",
       tabId: tab.id,
@@ -51,7 +52,10 @@
 
     entries.push(...matchingTabs);
 
-    const fallbackTarget = matchingTabs.length === 0 && trimmed ? buildFallbackTarget(trimmed) : null;
+    const topScore = filteredTabs.length > 0 ? filteredTabs[0].score : 0;
+    const isWeakMatch = trimmed && matchingTabs.length > 0 && topScore < 3;
+    const noMatch = trimmed && matchingTabs.length === 0;
+    const fallbackTarget = (noMatch || isWeakMatch) ? buildFallbackTarget(trimmed) : null;
 
     if (fallbackTarget) {
       entries.push({
