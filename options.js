@@ -1,3 +1,4 @@
+(() => {
 const {
   AI_PROVIDER_STORAGE_KEY,
   CUSTOM_AI_MODEL_OPTION_VALUE,
@@ -176,3 +177,4 @@ function setBusy(busy, message) {
   runButton.disabled = busy;
   statusText.textContent = message;
 }
+})();
