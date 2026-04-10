@@ -1,3 +1,5 @@
+import { SEARCH_PANEL_INJECTION_FILES } from "./search-panel-injection.mjs";
+
 const DEFAULT_AI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 const DEFAULT_AI_MODEL = "gpt-4.1-mini";
 const TAB_GROUP_COLORS = ["grey", "blue", "red", "yellow", "green", "pink", "purple", "cyan", "orange"];
@@ -102,7 +104,7 @@ async function openTabSearch() {
     try {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        files: ["ai-provider-config.js", "content.js"]
+        files: SEARCH_PANEL_INJECTION_FILES
       });
 
       await chrome.tabs.sendMessage(tab.id, payload);

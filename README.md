@@ -11,6 +11,7 @@
 - 键盘选中搜索结果后，可用右方向键切换“打开 / 关闭”，回车确认
 - 鼠标悬停结果时，会直接显示“打开 / 关闭”按钮
 - 在弹窗里用自然语言筛出一批 tab，然后执行分组、删除、加入书签
+- 普通网页只在真正触发搜索时按需注入页内面板脚本
 - 读取当前窗口里的未固定网页标签页
 - 调用兼容 OpenAI Chat Completions 的 AI 接口
 - 让 AI 生成排序和分组方案
@@ -70,6 +71,7 @@
 
 - `manifest.json`: 扩展权限、弹窗、设置页、快捷键
 - `ai-provider-config.js`: AI 服务商预置和接口归一化逻辑
+- `search-panel-injection.mjs`: 页内搜索面板按需注入时使用的脚本清单
 - `background.js`: AI 调用、排序和 tab group 应用逻辑
 - `background.js`: 也负责自然语言筛选 tab、批量分组/删除/书签
 - `content.js`: 页面内标签页搜索面板
