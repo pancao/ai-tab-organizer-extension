@@ -1,10 +1,17 @@
 import { getCandidateTabs } from "./background-core.mjs";
+import {
+  TITLE_REWRITE_MAX_LENGTH,
+  deriveBatchLabel,
+  normalizeBatchSelection,
+  normalizeOrganizationPlan,
+  normalizeTitleRewritePlan,
+  safeGetDomain,
+  truncate
+} from "./background-normalizers.mjs";
+import { resolveBackgroundAISettings } from "./background-ai-settings.mjs";
+import { SEARCH_PANEL_INJECTION_FILES } from "./search-panel-injection.mjs";
 
-const DEFAULT_AI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
-const DEFAULT_AI_MODEL = "gpt-4.1-mini";
-const TAB_GROUP_COLORS = ["grey", "blue", "red", "yellow", "green", "pink", "purple", "cyan", "orange"];
 const SEARCH_PANEL_BLOCKED_PROTOCOLS = ["about:", "brave:", "chrome:", "edge:", "vivaldi:"];
-const TITLE_REWRITE_MAX_LENGTH = 24;
 
 let organizationState = createIdleState();
 
@@ -104,7 +111,7 @@ async function openTabSearch() {
     try {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        files: ["ai-provider-config.js", "search-inline-settings.js", "search-core.js", "content.js"]
+        files: SEARCH_PANEL_INJECTION_FILES
       });
 
       await chrome.tabs.sendMessage(tab.id, payload);
@@ -474,62 +481,6 @@ function buildOrganizationPrompt(tabs, preference) {
   );
 }
 
-function normalizeOrganizationPlan(plan, tabs) {
-  const validIds = new Set(tabs.map((tab) => tab.id));
-  const assignedIds = new Set();
-  const normalizedGroups = [];
-  const sourceGroups = Array.isArray(plan?.groups) ? plan.groups : [];
-
-  for (const group of sourceGroups) {
-    const tabIds = (Array.isArray(group?.tabIds) ? group.tabIds : [])
-      .map((value) => Number(value))
-      .filter((id) => validIds.has(id) && !assignedIds.has(id));
-
-    if (tabIds.length < 2) {
-      continue;
-    }
-
-    tabIds.forEach((id) => assignedIds.add(id));
-    normalizedGroups.push({
-      name: truncate(String(group?.name || "Group").trim() || "Group", 40),
-      color: TAB_GROUP_COLORS.includes(group?.color) ? group.color : pickGroupColor(normalizedGroups.length),
-      collapsed: Boolean(group?.collapsed),
-      tabIds
-    });
-  }
-
-  const ungroupedTabIds = (Array.isArray(plan?.ungroupedTabIds) ? plan.ungroupedTabIds : [])
-    .map((value) => Number(value))
-    .filter((id) => validIds.has(id) && !assignedIds.has(id));
-
-  ungroupedTabIds.forEach((id) => assignedIds.add(id));
-
-  for (const tab of tabs) {
-    if (!assignedIds.has(tab.id)) {
-      ungroupedTabIds.push(tab.id);
-      assignedIds.add(tab.id);
-    }
-  }
-
-  return { groups: normalizedGroups, ungroupedTabIds };
-}
-
-function normalizeBatchSelection(result, tabs) {
-  const validIds = new Set(tabs.map((tab) => tab.id));
-  const selectedIdSet = new Set(
-    (Array.isArray(result?.selectedTabIds) ? result.selectedTabIds : [])
-      .map((value) => Number(value))
-      .filter((id) => validIds.has(id))
-  );
-
-  const selectedTabs = tabs.filter((tab) => selectedIdSet.has(tab.id));
-
-  return {
-    tabs: selectedTabs,
-    rationale: String(result?.rationale || "").trim(),
-    suggestedLabel: truncate(String(result?.suggestedLabel || "").trim() || deriveBatchLabel("", selectedTabs), 40)
-  };
-}
 
 async function applyOrganizationPlan(plan, candidateTabs, allWindowTabs) {
   const pinnedCount = allWindowTabs.filter((tab) => tab.pinned).length;
@@ -574,13 +525,7 @@ async function getAISettings() {
     "experimentalTitleRewriteEnabled"
   ]);
 
-  return {
-    endpoint: normalizeEndpoint(stored.aiEndpoint || DEFAULT_AI_ENDPOINT),
-    apiKey: stored.aiApiKey || "",
-    model: stored.aiModel || DEFAULT_AI_MODEL,
-    preference: stored.aiPreference || "",
-    experimentalTitleRewriteEnabled: Boolean(stored.experimentalTitleRewriteEnabled)
-  };
+  return resolveBackgroundAISettings(stored);
 }
 
 async function getSearchableTabs() {
@@ -673,29 +618,6 @@ async function rewriteTabTitlesWithAI(tabs, settings) {
   return results.filter(Boolean).length;
 }
 
-function normalizeTitleRewritePlan(result, tabs) {
-  const validIds = new Set(tabs.map((tab) => tab.id));
-  const seenIds = new Set();
-  const tabsById = new Map(tabs.map((tab) => [tab.id, tab]));
-  const source = Array.isArray(result?.titles) ? result.titles : [];
-
-  return source
-    .map((item) => ({
-      tabId: Number(item?.tabId),
-      title: cleanupRewrittenTitle(
-        truncate(String(item?.rewrittenTitle || "").trim(), TITLE_REWRITE_MAX_LENGTH),
-        tabsById.get(Number(item?.tabId))
-      )
-    }))
-    .filter((item) => {
-      if (!validIds.has(item.tabId) || seenIds.has(item.tabId) || !item.title) {
-        return false;
-      }
-
-      seenIds.add(item.tabId);
-      return true;
-    });
-}
 
 function shouldConsiderTitleRewrite(tab) {
   const title = String(tab?.title || "").trim();
@@ -761,28 +683,6 @@ async function applyTemporaryTitleRewrite(tabId, title) {
   }
 }
 
-function cleanupRewrittenTitle(title, tab) {
-  const normalized = String(title || "")
-    .replace(/\s*[|·•\-—]\s*/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (!normalized) {
-    return "";
-  }
-
-  const domain = safeGetDomain(tab?.url || "")
-    .replace(/^www\./i, "")
-    .split(".")[0]
-    .toLowerCase();
-
-  if (!domain) {
-    return normalized;
-  }
-
-  const parts = normalized.split(/\s+/).filter((part) => part.toLowerCase() !== domain);
-  return truncate(parts.join(" ").trim() || normalized, TITLE_REWRITE_MAX_LENGTH);
-}
 
 async function ensureBookmarkFolder(name) {
   const rootId = await ensureRootBookmarkFolder();
@@ -925,52 +825,6 @@ function parseJsonFromText(text) {
   }
 }
 
-function normalizeEndpoint(endpoint) {
-  const value = String(endpoint || "").trim();
-
-  if (!value) {
-    return DEFAULT_AI_ENDPOINT;
-  }
-
-  try {
-    const url = new URL(value);
-
-    if (url.pathname === "/" || url.pathname === "" || url.pathname === "/v1" || url.pathname === "/v1/") {
-      url.pathname = "/v1/chat/completions";
-    }
-
-    return url.toString();
-  } catch (_error) {
-    return value;
-  }
-}
-
-function safeGetDomain(url) {
-  try {
-    return new URL(url).hostname;
-  } catch (_error) {
-    return "";
-  }
-}
-
-function pickGroupColor(index) {
-  return TAB_GROUP_COLORS[index % TAB_GROUP_COLORS.length];
-}
-
-function truncate(value, maxLength) {
-  return value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
-}
-
-function deriveBatchLabel(query, tabs) {
-  const normalized = String(query || "").trim();
-
-  if (normalized) {
-    return truncate(normalized, 40);
-  }
-
-  const firstDomain = safeGetDomain(tabs[0]?.url || "");
-  return firstDomain || "Arc Tabs";
-}
 
 function isSearchPanelBlockedTab(url) {
   return !url || SEARCH_PANEL_BLOCKED_PROTOCOLS.some((protocol) => url.startsWith(protocol));
