@@ -654,25 +654,12 @@ async function applyTemporaryTitleRewrite(tabId, title) {
         const owner = window;
 
         if (owner[key]) {
-          window.clearInterval(owner[key]);
+          window.clearTimeout(owner[key]);
           owner[key] = null;
         }
 
-        const characters = Array.from(normalized);
-
-        if (characters.length === 0) {
-          return false;
-        }
-
-        document.title = "";
-
-        return new Promise((resolve) => {
-          owner[key] = window.setTimeout(() => {
-            owner[key] = null;
-            document.title = normalized;
-            resolve(document.title === normalized);
-          }, 24);
-        });
+        document.title = normalized;
+        return document.title === normalized;
       },
       args: [title]
     });
