@@ -11,14 +11,14 @@
 <body class="popup-body">
   <main class="popup-shell">
     <section class="surface compact-surface">
-      <div class="section-title">快捷键</div>
+      <div id="shortcut-title" class="section-title">快捷键</div>
       <div class="shortcut-list">
         <div class="shortcut-item">
-          <div class="shortcut-copy">整理标签页</div>
+          <div id="organize-shortcut-label" class="shortcut-copy">整理标签页</div>
           <kbd id="organize-shortcut" class="shortcut-key">⌘⇧J</kbd>
         </div>
         <div class="shortcut-item">
-          <div class="shortcut-copy">搜索标签页</div>
+          <div id="search-shortcut-label" class="shortcut-copy">搜索标签页</div>
           <kbd id="search-shortcut" class="shortcut-key">⌘⇧K</kbd>
         </div>
       </div>
@@ -33,6 +33,7 @@
     </section>
   </main>
   <script src="theme.js"></script>
+  <script src="i18n.js"></script>
   <script src="popup.js"></script>
 </body>
 

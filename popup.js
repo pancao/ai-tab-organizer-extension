@@ -1,3 +1,4 @@
+const i18n = globalThis.AITabI18n;
 const runButton = document.getElementById("run-button");
 const searchButton = document.getElementById("search-button");
 const settingsButton = document.getElementById("settings-button");
@@ -5,8 +6,8 @@ const organizeShortcut = document.getElementById("organize-shortcut");
 const searchShortcut = document.getElementById("search-shortcut");
 
 let pollTimer = null;
+let currentLocale = i18n.DEFAULT_UI_LANGUAGE;
 
-// Fire-and-forget: don't await so popup renders immediately
 initialize();
 
 runButton.addEventListener("click", async () => {
@@ -16,7 +17,7 @@ runButton.addEventListener("click", async () => {
     const response = await chrome.runtime.sendMessage({ type: "run-ai-organization" });
 
     if (!response?.ok && !response?.skipped) {
-      throw new Error(response?.error || "整理失败");
+      throw new Error(response?.error || i18n.t(currentLocale, "organizeFailed"));
     }
   } catch (error) {
     console.error(error);
@@ -36,6 +37,8 @@ settingsButton.addEventListener("click", async () => {
 });
 
 async function initialize() {
+  currentLocale = await i18n.getStoredLanguage();
+  renderLocale();
   await Promise.all([renderShortcuts(), refreshState()]);
   pollTimer = window.setInterval(refreshState, 500);
 }
@@ -58,7 +61,7 @@ async function refreshState() {
 
 function setRunBusy(busy) {
   runButton.disabled = busy;
-  runButton.textContent = busy ? "整理中…" : "一键整理标签页";
+  runButton.textContent = busy ? i18n.t(currentLocale, "popupRunBusy") : i18n.t(currentLocale, "organizeAllTabs");
   runButton.classList.toggle("loading-button", busy);
 }
 
@@ -74,6 +77,16 @@ async function renderShortcuts() {
     organizeShortcut.textContent = "⌘⇧J";
     searchShortcut.textContent = "⌘⇧K";
   }
+}
+
+function renderLocale() {
+  document.documentElement.lang = i18n.getLocaleTag(currentLocale);
+  document.getElementById("shortcut-title").textContent = i18n.t(currentLocale, "shortcutKeys");
+  document.getElementById("organize-shortcut-label").textContent = i18n.t(currentLocale, "organizeTabs");
+  document.getElementById("search-shortcut-label").textContent = i18n.t(currentLocale, "searchTabs");
+  searchButton.textContent = i18n.t(currentLocale, "openSearchPanel");
+  settingsButton.textContent = i18n.t(currentLocale, "settings");
+  setRunBusy(false);
 }
 
 function formatShortcut(value, fallback) {

@@ -24,7 +24,7 @@ test("buildEntries 遇到设置指令时只返回设置命令", () => {
       kind: "command",
       command: "settings",
       title: "设置",
-      subtitle: "设置主题色、服务商、AI 接口和整理偏好"
+      subtitle: "设置主题色、服务商、AI 接口、语言和整理偏好"
     }
   ]);
 });

@@ -13,7 +13,8 @@ test("buildInlineSettingsPayload 会统一保存时的 endpoint 和 provider", (
       apiKey: " sk-test ",
       model: " custom-model ",
       preference: " group by task ",
-      experimentalTitleRewriteEnabled: 1
+      experimentalTitleRewriteEnabled: 1,
+      uiLanguage: "jp"
     },
     providerConfig
   );
@@ -24,6 +25,7 @@ test("buildInlineSettingsPayload 会统一保存时的 endpoint 和 provider", (
   assert.equal(payload.aiModel, "custom-model");
   assert.equal(payload.aiPreference, "group by task");
   assert.equal(payload.experimentalTitleRewriteEnabled, true);
+  assert.equal(payload.uiLanguage, "jp");
 });
 
 test("loadInlineSettings 和 saveInlineSettings 会复用同一套设置规则", async () => {
@@ -37,7 +39,8 @@ test("loadInlineSettings 和 saveInlineSettings 会复用同一套设置规则",
         aiApiKey: "sk-or-v1",
         aiModel: "",
         aiPreference: "group by task",
-        experimentalTitleRewriteEnabled: false
+        experimentalTitleRewriteEnabled: false,
+        uiLanguage: "en"
       };
     },
     async set(payload) {
@@ -57,7 +60,8 @@ test("loadInlineSettings 和 saveInlineSettings 会复用同一套设置规则",
       apiKey: "key",
       model: "demo-model",
       preference: "",
-      experimentalTitleRewriteEnabled: true
+      experimentalTitleRewriteEnabled: true,
+      uiLanguage: "espanol"
     },
     storage,
     providerConfig
@@ -69,6 +73,7 @@ test("loadInlineSettings 和 saveInlineSettings 会复用同一套设置规则",
     aiApiKey: "key",
     aiModel: "demo-model",
     aiPreference: "",
-    experimentalTitleRewriteEnabled: true
+    experimentalTitleRewriteEnabled: true,
+    uiLanguage: "espanol"
   });
 });

@@ -9,11 +9,17 @@ import {
   truncate
 } from "./background-normalizers.mjs";
 import { resolveBackgroundAISettings } from "./background-ai-settings.mjs";
+import "./i18n.js";
 import { SEARCH_PANEL_INJECTION_FILES } from "./search-panel-injection.mjs";
 
 const SEARCH_PANEL_BLOCKED_PROTOCOLS = ["about:", "brave:", "chrome:", "edge:", "vivaldi:"];
+const i18n = globalThis.AITabI18n;
 
 let organizationState = createIdleState();
+
+function t(locale, key, vars) {
+  return i18n.t(locale || i18n.DEFAULT_UI_LANGUAGE, key, vars);
+}
 
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === "install") {
@@ -82,8 +88,10 @@ async function handleRuntimeMessage(message) {
       return await previewBatchTabs(message.query, message.windowId);
     case "apply-batch-action":
       return await applyBatchAction(message);
-    default:
-      return { ok: false, error: "Unsupported message type." };
+    default: {
+      const { uiLanguage } = await getAISettings();
+      return { ok: false, error: t(uiLanguage, "unsupportedMessageType") };
+    }
   }
 }
 
@@ -135,64 +143,65 @@ async function openStandaloneSearchWindow(sourceWindowId) {
 }
 
 async function organizeTabsWithAI(windowId) {
+  const settings = await getAISettings();
+  const locale = settings.uiLanguage;
+
   if (organizationState.busy) {
-    return { ok: false, error: "已有一次整理正在进行中。" };
+    return { ok: false, error: t(locale, "backgroundAlreadyRunning") };
   }
 
-  organizationState = createBusyState();
-  pushLog("开始整理当前窗口标签页");
+  organizationState = createBusyState(locale);
+  pushLog(t(locale, "backgroundLogStart"), locale);
 
   try {
     updateState({
       phase: "validating",
-      title: "检查设置",
-      detail: "正在读取接口配置"
+      title: t(locale, "backgroundCheckSettings"),
+      detail: t(locale, "backgroundCheckSettingsDetail")
     });
 
-    const settings = await getAISettings();
-
     if (!settings.apiKey) {
-      throw new Error("请先在设置页填写 API Key。");
+      throw new Error(t(locale, "backgroundMissingApiKey"));
     }
 
     updateState({
       phase: "reading_tabs",
-      title: "读取标签页",
-      detail: "正在分析当前窗口的未固定网页标签页"
+      title: t(locale, "backgroundReadTabs"),
+      detail: t(locale, "backgroundReadTabsDetail")
     });
 
     const windowTabs = await chrome.tabs.query(windowId ? { windowId } : { currentWindow: true });
     const candidateTabs = getCandidateTabs(windowTabs);
-    pushLog(`读取到 ${candidateTabs.length} 个可整理标签页`);
+    pushLog(t(locale, "backgroundLogReadTabs", { count: candidateTabs.length }), locale);
 
     if (candidateTabs.length < 2) {
-      const reason = "当前窗口至少需要 2 个未固定网页标签页。";
-      finishSuccess(reason, { groups: [], ungroupedTabIds: candidateTabs.map((tab) => tab.id) });
+      const reason = t(locale, "backgroundNeedTwoTabs");
+      finishSuccess(reason, { groups: [], ungroupedTabIds: candidateTabs.map((tab) => tab.id) }, locale);
       return { ok: true, skipped: true, reason, state: organizationState };
     }
 
     updateState({
       phase: "requesting_ai",
-      title: "请求 AI",
-      detail: `正在向 ${new URL(settings.endpoint).hostname} 发送整理请求`
+      title: t(locale, "backgroundRequestAI"),
+      detail: t(locale, "backgroundRequestAIDetail", { host: new URL(settings.endpoint).hostname })
     });
 
     const rawPlan = await requestAIOrganizationPlan(candidateTabs, settings);
-    pushLog("AI 已返回整理方案");
+    pushLog(t(locale, "backgroundLogAIPlanReady"), locale);
 
     updateState({
       phase: "validating_plan",
-      title: "校验方案",
-      detail: "正在确保每个标签页都被安全纳入方案"
+      title: t(locale, "backgroundValidatePlan"),
+      detail: t(locale, "backgroundValidatePlanDetail")
     });
 
     const plan = normalizeOrganizationPlan(rawPlan, candidateTabs);
-    pushLog(`校验完成：${plan.groups.length} 个分组`);
+    pushLog(t(locale, "backgroundLogValidated", { count: plan.groups.length }), locale);
 
     updateState({
       phase: "applying",
-      title: "应用方案",
-      detail: "正在重新排序标签页并创建分组"
+      title: t(locale, "backgroundApplyPlan"),
+      detail: t(locale, "backgroundApplyPlanDetail")
     });
 
     await applyOrganizationPlan(plan, candidateTabs, windowTabs);
@@ -202,49 +211,54 @@ async function organizeTabsWithAI(windowId) {
     if (settings.experimentalTitleRewriteEnabled) {
       updateState({
         phase: "rewriting_titles",
-        title: "简化标题",
-        detail: "正在为较长或难懂的标签标题生成简写"
+        title: t(locale, "backgroundRewriteTitles"),
+        detail: t(locale, "backgroundRewriteTitlesDetail")
       });
 
       try {
         renamedCount = await rewriteTabTitlesWithAI(candidateTabs, settings);
 
         if (renamedCount > 0) {
-          pushLog(`已简化 ${renamedCount} 个标签标题`);
+          pushLog(t(locale, "backgroundLogRewritten", { count: renamedCount }), locale);
         } else {
-          pushLog("没有需要简化的可注入网页标题");
+          pushLog(t(locale, "backgroundLogRewriteSkippedNone"), locale);
         }
       } catch (error) {
-        pushLog(`标题简化已跳过：${error instanceof Error ? error.message : "未知错误"}`);
+        pushLog(
+          t(locale, "backgroundLogRewriteSkipped", {
+            message: error instanceof Error ? error.message : "Unknown error"
+          }),
+          locale
+        );
       }
     }
 
-    const summary = buildPlanSummary(plan, renamedCount);
-    finishSuccess(summary, plan);
+    const summary = buildPlanSummary(plan, renamedCount, locale);
+    finishSuccess(summary, plan, locale);
     return { ok: true, summary, plan, renamedCount, state: organizationState };
   } catch (error) {
-    finishError(error instanceof Error ? error.message : "整理失败");
+    finishError(error instanceof Error ? error.message : t(locale, "organizeFailed"), locale);
     throw error;
   }
 }
 
 async function previewBatchTabs(query, windowId) {
   const trimmedQuery = String(query || "").trim();
+  const settings = await getAISettings();
+  const locale = settings.uiLanguage;
 
   if (!trimmedQuery) {
-    return { ok: false, error: "请输入自然语言描述。" };
+    return { ok: false, error: t(locale, "backgroundPromptNatural") };
   }
 
-  const settings = await getAISettings();
-
   if (!settings.apiKey) {
-    return { ok: false, error: "请先在设置页填写 API Key。" };
+    return { ok: false, error: t(locale, "backgroundMissingApiKey") };
   }
 
   const currentTabs = getCandidateTabs(await chrome.tabs.query(windowId ? { windowId } : { currentWindow: true }));
 
   if (currentTabs.length === 0) {
-    return { ok: false, error: "当前窗口没有可操作的网页标签页。" };
+    return { ok: false, error: t(locale, "backgroundNoActionableTabs") };
   }
 
   const rawSelection = await requestBatchSelection(trimmedQuery, currentTabs, settings);
@@ -266,9 +280,10 @@ async function applyBatchAction(message) {
   const action = String(message?.action || "");
   const query = String(message?.query || "").trim();
   const customLabel = String(message?.label || "").trim();
+  const { uiLanguage } = await getAISettings();
 
   if (tabIds.length === 0) {
-    return { ok: false, error: "还没有选中任何标签页。" };
+    return { ok: false, error: t(uiLanguage, "backgroundNoSelectedTabs") };
   }
 
   const results = await Promise.allSettled(tabIds.map((tabId) => chrome.tabs.get(tabId)));
@@ -276,7 +291,7 @@ async function applyBatchAction(message) {
   const validTabIds = validTabs.map((tab) => tab.id);
 
   if (validTabs.length === 0) {
-    return { ok: false, error: "选中的标签页已经不存在了。" };
+    return { ok: false, error: t(uiLanguage, "backgroundSelectedTabsMissing") };
   }
 
   if (action === "group") {
@@ -288,12 +303,12 @@ async function applyBatchAction(message) {
       collapsed: false
     });
 
-    return { ok: true, summary: `已把 ${validTabs.length} 个标签页分到“${label}”` };
+    return { ok: true, summary: t(uiLanguage, "backgroundGroupedSummary", { count: validTabs.length, label }) };
   }
 
   if (action === "delete") {
     await chrome.tabs.remove(validTabIds);
-    return { ok: true, summary: `已关闭 ${validTabs.length} 个标签页` };
+    return { ok: true, summary: t(uiLanguage, "backgroundClosedSummary", { count: validTabs.length }) };
   }
 
   if (action === "bookmark") {
@@ -302,12 +317,12 @@ async function applyBatchAction(message) {
     for (const tab of validTabs) {
       await chrome.bookmarks.create({
         parentId: folderId,
-        title: tab.title || tab.url || "Untitled",
+        title: tab.title || tab.url || t(uiLanguage, "backgroundUntitled"),
         url: tab.url
       });
     }
 
-    return { ok: true, summary: `已把 ${validTabs.length} 个标签页加入书签` };
+    return { ok: true, summary: t(uiLanguage, "backgroundBookmarkedSummary", { count: validTabs.length }) };
   }
 
   if (action === "bookmark_close") {
@@ -320,16 +335,16 @@ async function applyBatchAction(message) {
 
       await chrome.bookmarks.create({
         parentId: folderId,
-        title: tab.title || tab.url || "Untitled",
+        title: tab.title || tab.url || t(uiLanguage, "backgroundUntitled"),
         url: tab.url
       });
     }
 
     await chrome.tabs.remove(validTabs.map((tab) => tab.id));
-    return { ok: true, summary: `已收藏并关闭 ${validTabs.length} 个标签页` };
+    return { ok: true, summary: t(uiLanguage, "backgroundBookmarkedClosedSummary", { count: validTabs.length }) };
   }
 
-  return { ok: false, error: "不支持的操作。" };
+  return { ok: false, error: t(uiLanguage, "backgroundUnsupportedAction") };
 }
 
 async function requestAIOrganizationPlan(tabs, settings) {
@@ -416,6 +431,7 @@ async function requestAITitleRewritePlan(tabs, settings) {
 }
 
 async function requestJSONFromAI(settings, systemPrompt, userPrompt) {
+  const locale = settings.uiLanguage;
   const response = await fetch(settings.endpoint, {
     method: "POST",
     headers: {
@@ -435,17 +451,17 @@ async function requestJSONFromAI(settings, systemPrompt, userPrompt) {
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`AI 请求失败：${response.status} ${truncate(errorText, 140)}`);
+    throw new Error(t(locale, "aiRequestFailed", { status: response.status, message: truncate(errorText, 140) }));
   }
 
   const payload = await response.json();
   const content = extractAssistantContent(payload);
 
   if (!content) {
-    throw new Error("AI 没有返回可解析内容。");
+    throw new Error(t(locale, "aiNoContent"));
   }
 
-  return parseJsonFromText(content);
+  return parseJsonFromText(content, locale);
 }
 
 function buildOrganizationPrompt(tabs, preference) {
@@ -483,12 +499,13 @@ function buildOrganizationPrompt(tabs, preference) {
 
 
 async function applyOrganizationPlan(plan, candidateTabs, allWindowTabs) {
+  const { uiLanguage } = await getAISettings();
   const pinnedCount = allWindowTabs.filter((tab) => tab.pinned).length;
   const desiredOrder = [...plan.groups.flatMap((group) => group.tabIds), ...plan.ungroupedTabIds];
   const groupedTabs = candidateTabs.filter((tab) => tab.groupId !== -1).map((tab) => tab.id);
 
   if (groupedTabs.length > 0) {
-    pushLog(`先解除 ${groupedTabs.length} 个已有分组内标签页`);
+    pushLog(t(uiLanguage, "backgroundLogUngroup", { count: groupedTabs.length }), uiLanguage);
     await chrome.tabs.ungroup(groupedTabs);
   }
 
@@ -506,14 +523,18 @@ async function applyOrganizationPlan(plan, candidateTabs, allWindowTabs) {
   }
 }
 
-function buildPlanSummary(plan, renamedCount = 0) {
-  const renameSuffix = renamedCount > 0 ? `，并简化 ${renamedCount} 个标题` : "";
+function buildPlanSummary(plan, renamedCount = 0, locale = "cn") {
+  const renameSuffix = renamedCount > 0 ? t(locale, "backgroundRenameSuffix", { count: renamedCount }) : "";
 
   if (plan.groups.length === 0) {
-    return `已整理 ${plan.ungroupedTabIds.length} 个标签页${renameSuffix}`;
+    return t(locale, "backgroundSummaryUngrouped", { count: plan.ungroupedTabIds.length, suffix: renameSuffix });
   }
 
-  return `已整理 ${plan.groups.length} 个分组，覆盖 ${plan.groups.flatMap((group) => group.tabIds).length} 个标签页${renameSuffix}`;
+  return t(locale, "backgroundSummaryGrouped", {
+    groups: plan.groups.length,
+    count: plan.groups.flatMap((group) => group.tabIds).length,
+    suffix: renameSuffix
+  });
 }
 
 async function getAISettings() {
@@ -522,7 +543,8 @@ async function getAISettings() {
     "aiApiKey",
     "aiModel",
     "aiPreference",
-    "experimentalTitleRewriteEnabled"
+    "experimentalTitleRewriteEnabled",
+    i18n.UI_LANGUAGE_STORAGE_KEY
   ]);
 
   return resolveBackgroundAISettings(stored);
@@ -590,12 +612,13 @@ async function closeTab(tabId) {
 
 async function bookmarkAndCloseTab(tabId) {
   const tab = await chrome.tabs.get(tabId);
-  const folderId = await ensureBookmarkFolder("Search Saves");
+  const { uiLanguage } = await getAISettings();
+  const folderId = await ensureBookmarkFolder(t(uiLanguage, "backgroundSearchSaves"));
 
   if (tab.url) {
     await chrome.bookmarks.create({
       parentId: folderId,
-      title: tab.title || tab.url || "Untitled",
+      title: tab.title || tab.url || t(uiLanguage, "backgroundUntitled"),
       url: tab.url
     });
   }
@@ -610,7 +633,7 @@ async function rewriteTabTitlesWithAI(tabs, settings) {
     return 0;
   }
 
-  pushLog(`为 ${candidates.length} 个网页尝试生成简写标题`);
+  pushLog(t(settings.uiLanguage, "backgroundLogRewriting", { count: candidates.length }), settings.uiLanguage);
 
   const rawPlan = await requestAITitleRewritePlan(candidates, settings);
   const rewrites = normalizeTitleRewritePlan(rawPlan, candidates);
@@ -693,7 +716,8 @@ async function ensureRootBookmarkFolder() {
   const barNode = tree.children?.find((node) => node.title === "Bookmarks bar") || tree.children?.[0];
 
   if (!barNode?.id) {
-    throw new Error("找不到可用的书签根目录。");
+    const { uiLanguage } = await getAISettings();
+    throw new Error(t(uiLanguage, "backgroundNoBookmarkRoot"));
   }
 
   const existing = (await chrome.bookmarks.getChildren(barNode.id)).find(
@@ -712,12 +736,12 @@ async function ensureRootBookmarkFolder() {
   return folder.id;
 }
 
-function createIdleState() {
+function createIdleState(locale = "cn") {
   return {
     busy: false,
     phase: "idle",
-    title: "等待开始",
-    detail: "准备好后点击“开始整理”",
+    title: t(locale, "backgroundWaiting"),
+    detail: t(locale, "backgroundWaitingDetail"),
     logs: [],
     summary: "",
     error: "",
@@ -726,12 +750,12 @@ function createIdleState() {
   };
 }
 
-function createBusyState() {
+function createBusyState(locale = "cn") {
   return {
     busy: true,
     phase: "starting",
-    title: "准备开始",
-    detail: "正在启动整理流程",
+    title: t(locale, "backgroundPreparing"),
+    detail: t(locale, "backgroundPreparingDetail"),
     logs: [],
     summary: "",
     error: "",
@@ -748,17 +772,17 @@ function updateState(patch) {
   };
 }
 
-function pushLog(message) {
-  const logs = [...organizationState.logs, { message, at: new Date().toLocaleTimeString("zh-CN", { hour12: false }) }];
+function pushLog(message, locale = "cn") {
+  const logs = [...organizationState.logs, { message, at: new Date().toLocaleTimeString(i18n.getLocaleTag(locale), { hour12: false }) }];
   updateState({ logs: logs.slice(-12) });
 }
 
-function finishSuccess(summary, plan) {
-  pushLog(summary);
+function finishSuccess(summary, plan, locale = "cn") {
+  pushLog(summary, locale);
   updateState({
     busy: false,
     phase: "done",
-    title: "整理完成",
+    title: t(locale, "backgroundDone"),
     detail: summary,
     summary,
     error: "",
@@ -766,12 +790,12 @@ function finishSuccess(summary, plan) {
   });
 }
 
-function finishError(message) {
-  pushLog(`失败：${message}`);
+function finishError(message, locale = "cn") {
+  pushLog(t(locale, "backgroundLogFailed", { message }), locale);
   updateState({
     busy: false,
     phase: "error",
-    title: "整理失败",
+    title: t(locale, "backgroundError"),
     detail: message,
     error: message
   });
@@ -791,7 +815,7 @@ function extractAssistantContent(payload) {
   return "";
 }
 
-function parseJsonFromText(text) {
+function parseJsonFromText(text, locale = i18n?.DEFAULT_UI_LANGUAGE || "cn") {
   try {
     return JSON.parse(text);
   } catch (_error) {
@@ -808,7 +832,7 @@ function parseJsonFromText(text) {
       return JSON.parse(text.slice(start, end + 1));
     }
 
-    throw new Error("AI 返回的不是合法 JSON。");
+    throw new Error(t(locale, "aiInvalidJson"));
   }
 }
 

@@ -7,12 +7,14 @@
     module.exports = api;
   }
 })(typeof globalThis !== "undefined" ? globalThis : this, function createInlineSearchSettings(root) {
+  const i18n = root.AITabI18n;
   const INLINE_SETTINGS_STORAGE_SUFFIX_KEYS = Object.freeze([
     "aiEndpoint",
     "aiApiKey",
     "aiModel",
     "aiPreference",
-    "experimentalTitleRewriteEnabled"
+    "experimentalTitleRewriteEnabled",
+    i18n?.UI_LANGUAGE_STORAGE_KEY || "uiLanguage"
   ]);
 
   function getInlineSettingsStorageKeys(providerConfig) {
@@ -31,7 +33,10 @@
       aiApiKey: String(source.apiKey || "").trim(),
       aiModel: String(source.model || "").trim(),
       aiPreference: String(source.preference || "").trim(),
-      experimentalTitleRewriteEnabled: Boolean(source.experimentalTitleRewriteEnabled)
+      experimentalTitleRewriteEnabled: Boolean(source.experimentalTitleRewriteEnabled),
+      [i18n?.UI_LANGUAGE_STORAGE_KEY || "uiLanguage"]: i18n?.resolveUILanguage
+        ? i18n.resolveUILanguage(source.uiLanguage)
+        : String(source.uiLanguage || "cn")
     };
   }
 

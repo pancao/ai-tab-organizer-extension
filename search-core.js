@@ -7,9 +7,28 @@
     module.exports = api;
   }
 })(typeof globalThis !== "undefined" ? globalThis : this, function createTabSearchCore() {
+  const i18n = typeof globalThis !== "undefined" ? globalThis.AITabI18n : null;
   const SEARCH_ACTIONS = Object.freeze(["open", "close", "bookmark_close"]);
+  const FALLBACK_MESSAGES = Object.freeze({
+    settings: "设置",
+    commandSettingsSubtitle: "设置主题色、服务商、AI 接口、语言和整理偏好",
+    commandArrangeTitle: "整理标签页",
+    commandArrangeSubtitle: "智能整理并分组所有标签页",
+    search: "搜索",
+    commandNaturalTitle: "自然语言智能搜索",
+    commandNaturalSubtitle: "“所有谷歌文档”、“3天没打开过的标签”",
+    openUrl: "打开网址"
+  });
 
-  function buildEntries(tabs, query) {
+  function getText(locale, key, vars) {
+    if (i18n?.t) {
+      return i18n.t(locale, key, vars);
+    }
+
+    return FALLBACK_MESSAGES[key] || key;
+  }
+
+  function buildEntries(tabs, query, locale = "cn") {
     const entries = [];
     const trimmed = String(query || "").trim();
     const normalized = trimmed.toLowerCase();
@@ -20,8 +39,8 @@
         id: "command-settings",
         kind: "command",
         command: "settings",
-        title: "设置",
-        subtitle: "设置主题色、服务商、AI 接口和整理偏好"
+        title: getText(locale, "settings"),
+        subtitle: getText(locale, "commandSettingsSubtitle")
       });
     }
 
@@ -34,8 +53,8 @@
         id: "command-arrange",
         kind: "command",
         command: "arrange",
-        title: "整理标签页",
-        subtitle: "智能整理并分组所有标签页"
+        title: getText(locale, "commandArrangeTitle"),
+        subtitle: getText(locale, "commandArrangeSubtitle")
       });
     }
 
@@ -55,7 +74,7 @@
     const topScore = filteredTabs.length > 0 ? filteredTabs[0].score : 0;
     const isWeakMatch = trimmed && matchingTabs.length > 0 && topScore < 3;
     const noMatch = trimmed && matchingTabs.length === 0;
-    const fallbackTarget = (noMatch || isWeakMatch) ? buildFallbackTarget(trimmed) : null;
+    const fallbackTarget = (noMatch || isWeakMatch) ? buildFallbackTarget(trimmed, locale) : null;
 
     if (fallbackTarget) {
       entries.push({
@@ -64,7 +83,7 @@
         url: fallbackTarget.value,
         title: fallbackTarget.title,
         subtitle: fallbackTarget.subtitle,
-        isSearch: fallbackTarget.title === "搜索"
+        isSearch: fallbackTarget.title === getText(locale, "search")
       });
     }
 
@@ -73,8 +92,8 @@
         id: `natural-${trimmed}`,
         kind: "command",
         command: "natural-search",
-        title: "自然语言智能搜索",
-        subtitle: "“所有谷歌文档”、“3天没打开过的标签”"
+        title: getText(locale, "commandNaturalTitle"),
+        subtitle: getText(locale, "commandNaturalSubtitle")
       };
       const insertIndex = fallbackTarget ? entries.length : Math.min(1, entries.length);
       entries.splice(insertIndex, 0, naturalEntry);
@@ -151,7 +170,16 @@
   function isSettingsCommand(query, normalizedQuery) {
     return (
       String(query || "").includes("设置") ||
+      String(query || "").includes("設定") ||
+      String(query || "").includes("設置") ||
+      String(query || "").includes("设定") ||
+      String(query || "").includes("configuración") ||
+      String(query || "").includes("configuracion") ||
+      String(query || "").includes("ajustes") ||
+      String(query || "").includes("設定") ||
       normalizedQuery.startsWith("set") ||
+      normalizedQuery.includes("config") ||
+      normalizedQuery.includes("ajuste") ||
       normalizedQuery.includes("settings") ||
       normalizedQuery.includes("setting")
     );
@@ -197,20 +225,20 @@
     }
   }
 
-  function buildFallbackTarget(value) {
+  function buildFallbackTarget(value, locale = "cn") {
     const normalized = isLikelyUrl(value) ? normalizeUrl(value) : null;
 
     if (normalized) {
       return {
         value: normalized,
-        title: "打开网址",
+        title: getText(locale, "openUrl"),
         subtitle: normalized
       };
     }
 
     return {
       value,
-      title: "搜索",
+      title: getText(locale, "search"),
       subtitle: value
     };
   }

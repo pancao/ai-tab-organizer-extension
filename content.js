@@ -7,6 +7,60 @@ const {
   resolveAIModelSelection,
   updateAIKeyPlaceholder
 } = globalThis.AIProviderConfig;
+const i18n = globalThis.AITabI18n || {
+  DEFAULT_UI_LANGUAGE: "cn",
+  async getStoredLanguage() {
+    return "cn";
+  },
+  getLocaleTag() {
+    return "zh-CN";
+  },
+  t(_locale, key) {
+    const fallback = {
+      searchInputPlaceholder: "通过关键词、网址、或一句话搜索标签",
+      closeAllAndBookmark: "关闭全部并收藏",
+      closeAll: "关闭所有",
+      newGroup: "新建分组",
+      organizeTabs: "整理标签页",
+      popupRunBusy: "整理中…",
+      settings: "设置",
+      naturalNoMatch: "自然语言搜索没有找到匹配标签页",
+      noMatchedTabs: "没有匹配的标签页",
+      naturalLoading: "正在进行自然语言搜索…",
+      settingsHelperShort: "设置主题色、服务商、AI 接口、语言和整理偏好。",
+      provider: "服务商",
+      endpoint: "接口地址",
+      modelName: "模型名",
+      customModelPlaceholder: "输入自定义模型名",
+      language: "语言",
+      preference: "整理偏好",
+      preferencePlaceholder: "例如：工作相关靠前，阅读类折叠，娱乐类靠后。",
+      titleRewriteLabel: "实验功能：整理后简化网页标题",
+      titleRewriteHelperShort: "整理后尝试为可注入网页写入更短的临时标题。",
+      saveSettings: "保存设置",
+      saveAndRun: "保存并立即整理",
+      saving: "正在保存…",
+      saved: "已保存",
+      saveAndStart: "保存并开始整理…",
+      started: "已开始",
+      organizeFailed: "整理失败",
+      loadSettingsFailed: "读取设置失败",
+      open: "打开",
+      close: "关闭",
+      bookmarkAndClose: "收藏后关闭"
+    };
+    return fallback[key] || key;
+  },
+  getLanguageOptions() {
+    return [
+      { value: "en", label: "English" },
+      { value: "cn", label: "简体中文" },
+      { value: "cn-t", label: "繁體中文" },
+      { value: "jp", label: "日本語" },
+      { value: "espanol", label: "Español" }
+    ];
+  }
+};
 const { loadInlineSettings, saveInlineSettings } = globalThis.AITabInlineSettings;
 const {
   SEARCH_ACTIONS,
@@ -20,25 +74,19 @@ const {
 
 const OVERLAY_ID = "__ai_tab_organizer_search_overlay__";
 const ACTIONS = SEARCH_ACTIONS;
-const NATURAL_BATCH_ACTIONS = [
-  { action: "bookmark_close", label: "关闭全部并收藏" },
-  { action: "delete", label: "关闭所有" },
-  { action: "group", label: "新建分组" }
-];
 const UI_FONT_FAMILY = '"Inter", sans-serif';
 
 const _ic = (d) => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto">${d}</svg>`;
 const BUTTON_ICONS = {
-  "整理标签页": _ic('<path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2 19 5"/><path d="m3 21 9-9"/><path d="M12.2 6.2 11 5"/>'),
-  "设置": _ic('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'),
-  "打开": _ic('<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>'),
-  "关闭": _ic('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'),
-  "收藏后关闭": _ic('<path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>'),
-  "关闭全部并收藏": _ic('<path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>'),
-  "关闭所有": _ic('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'),
-  "新建分组": _ic('<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/>'),
-  "保存设置": _ic('<polyline points="20 6 9 17 4 12"/>'),
-  "保存并立即整理标签页": _ic('<path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2 19 5"/><path d="m3 21 9-9"/><path d="M12.2 6.2 11 5"/>'),
+  organize: _ic('<path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2 19 5"/><path d="m3 21 9-9"/><path d="M12.2 6.2 11 5"/>'),
+  settings: _ic('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'),
+  open: _ic('<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>'),
+  close: _ic('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'),
+  bookmark_close: _ic('<path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>'),
+  delete: _ic('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'),
+  group: _ic('<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/>'),
+  save: _ic('<polyline points="20 6 9 17 4 12"/>'),
+  save_run: _ic('<path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2 19 5"/><path d="m3 21 9-9"/><path d="M12.2 6.2 11 5"/>'),
 };
 
 const THEME_COLORS_CONFIG = {
@@ -85,6 +133,12 @@ async function openTabSearch(prefetchedTabs) {
 
   let tabs;
   let theme;
+  const currentLocale = await i18n.getStoredLanguage();
+  const NATURAL_BATCH_ACTIONS = [
+    { action: "bookmark_close", label: i18n.t(currentLocale, "closeAllAndBookmark"), iconKey: "bookmark_close" },
+    { action: "delete", label: i18n.t(currentLocale, "closeAll"), iconKey: "delete" },
+    { action: "group", label: i18n.t(currentLocale, "newGroup"), iconKey: "group" }
+  ];
 
   if (prefetchedTabs) {
     tabs = prefetchedTabs;
@@ -175,7 +229,7 @@ async function openTabSearch(prefetchedTabs) {
 
   const input = document.createElement("input");
   input.type = "text";
-  input.placeholder = "通过关键词、网址、或一句话搜索标签";
+  input.placeholder = i18n.t(currentLocale, "searchInputPlaceholder");
   input.autocomplete = "off";
   input.spellcheck = false;
   input.autocapitalize = "off";
@@ -226,22 +280,22 @@ async function openTabSearch(prefetchedTabs) {
   inputWrapper.appendChild(input);
   inputWrapper.appendChild(clearButton);
 
-  const arrangeButton = createToolbarButton("整理标签页", async () => {
-    setToolbarButtonBusy(arrangeButton, true, "整理中…");
+  const arrangeButton = createToolbarButton(i18n.t(currentLocale, "organizeTabs"), async () => {
+    setToolbarButtonBusy(arrangeButton, true, i18n.t(currentLocale, "popupRunBusy"));
 
     try {
       await chrome.runtime.sendMessage({ type: "run-ai-organization" });
       close();
     } finally {
-      setToolbarButtonBusy(arrangeButton, false, "整理标签页");
+      setToolbarButtonBusy(arrangeButton, false, i18n.t(currentLocale, "organizeTabs"));
     }
-  }, t);
+  }, t, "organize");
 
-  const settingsButton = createToolbarButton("设置", async () => {
+  const settingsButton = createToolbarButton(i18n.t(currentLocale, "settings"), async () => {
     await enterSettingsView();
-  }, t);
-  settingsButton.innerHTML = BUTTON_ICONS["设置"];
-  settingsButton.title = "设置";
+  }, t, "settings");
+  settingsButton.innerHTML = BUTTON_ICONS.settings;
+  settingsButton.title = i18n.t(currentLocale, "settings");
   setStyles(settingsButton, { padding: "10px" });
 
   const headerButtons = [arrangeButton, settingsButton];
@@ -526,7 +580,7 @@ async function openTabSearch(prefetchedTabs) {
       return;
     }
 
-    entries = searchMode === "natural" && naturalPreview ? buildNaturalEntries(naturalPreview) : buildEntries(tabs, input.value.trim());
+    entries = searchMode === "natural" && naturalPreview ? buildNaturalEntries(naturalPreview) : buildEntries(tabs, input.value.trim(), currentLocale);
     selectedIndex = normalizeIndex(selectedIndex, entries);
 
     if (!supportsActions(entries[selectedIndex])) {
@@ -539,7 +593,7 @@ async function openTabSearch(prefetchedTabs) {
 
     if (entries.length === 0) {
       const empty = document.createElement("div");
-      empty.textContent = searchMode === "natural" ? "自然语言搜索没有找到匹配标签页" : "没有匹配的标签页";
+      empty.textContent = searchMode === "natural" ? i18n.t(currentLocale, "naturalNoMatch") : i18n.t(currentLocale, "noMatchedTabs");
       setStyles(empty, {
         padding: "12px 14px 16px",
         flex: "0 0 auto",
@@ -589,7 +643,7 @@ async function openTabSearch(prefetchedTabs) {
     });
 
     const label = document.createElement("div");
-    label.textContent = "正在进行自然语言搜索…";
+    label.textContent = i18n.t(currentLocale, "naturalLoading");
 
     loading.appendChild(spinner);
     loading.appendChild(label);
@@ -624,7 +678,7 @@ async function openTabSearch(prefetchedTabs) {
     });
 
     const title = document.createElement("div");
-    title.textContent = "设置";
+    title.textContent = i18n.t(currentLocale, "settings");
     setStyles(title, {
       padding: "4px 10px 0",
       fontSize: "14px",
@@ -633,7 +687,7 @@ async function openTabSearch(prefetchedTabs) {
     });
 
     const helper = document.createElement("div");
-    helper.textContent = "设置主题色、服务商、AI 接口和整理偏好";
+    helper.textContent = i18n.t(currentLocale, "settingsHelperShort");
     setStyles(helper, {
       padding: "0 10px",
       fontSize: "12px",
@@ -659,17 +713,24 @@ async function openTabSearch(prefetchedTabs) {
       minHeight: "18px"
     });
 
-    const providerField = createSettingsSelect("服务商", t);
-    populateAIProviderSelect(providerField.input);
+    const providerField = createSettingsSelect(i18n.t(currentLocale, "provider"), t);
+    populateAIProviderSelect(providerField.input, currentLocale);
 
-    const endpointField = createSettingsField("接口地址", "text", "https://api.openai.com/v1/chat/completions", t);
+    const endpointField = createSettingsField(i18n.t(currentLocale, "endpoint"), "text", "https://api.openai.com/v1/chat/completions", t);
     const apiKeyField = createSettingsField("API Key", "password", "sk-...", t);
-    const modelField = createSettingsSelect("模型名", t);
-    const customModelInput = createSettingsStandaloneInput("text", "输入自定义模型名", t);
+    const modelField = createSettingsSelect(i18n.t(currentLocale, "modelName"), t);
+    const customModelInput = createSettingsStandaloneInput("text", i18n.t(currentLocale, "customModelPlaceholder"), t);
     customModelInput.style.display = "none";
     modelField.wrapper.appendChild(customModelInput);
-    const preferenceField = createSettingsTextarea("整理偏好", "例如：工作相关靠前，阅读类折叠，娱乐类靠后。", t);
-    const toggleField = createSettingsToggle("实验功能：整理后简化网页标题", "整理后尝试为可注入网页写入更短的临时标题。", t, theme.accent);
+    const languageField = createSettingsSelect(i18n.t(currentLocale, "language"), t);
+    i18n.getLanguageOptions().forEach((item) => {
+      const option = document.createElement("option");
+      option.value = item.value;
+      option.textContent = item.label;
+      languageField.input.appendChild(option);
+    });
+    const preferenceField = createSettingsTextarea(i18n.t(currentLocale, "preference"), i18n.t(currentLocale, "preferencePlaceholder"), t);
+    const toggleField = createSettingsToggle(i18n.t(currentLocale, "titleRewriteLabel"), i18n.t(currentLocale, "titleRewriteHelperShort"), t, theme.accent);
 
     const actionRow = document.createElement("div");
     setStyles(actionRow, {
@@ -679,35 +740,37 @@ async function openTabSearch(prefetchedTabs) {
       flexWrap: "wrap"
     });
 
-    const saveButton = createToolbarButton("保存设置", async () => {
-      status.textContent = "正在保存…";
+    const saveButton = createToolbarButton(i18n.t(currentLocale, "saveSettings"), async () => {
+      status.textContent = i18n.t(currentLocale, "saving");
       await saveInlineSettings({
         providerId: providerField.input.value,
         endpoint: endpointField.input.value,
         apiKey: apiKeyField.input.value,
         model: getCurrentModelValue(),
         preference: preferenceField.input.value,
-        experimentalTitleRewriteEnabled: toggleField.input.checked
+        experimentalTitleRewriteEnabled: toggleField.input.checked,
+        uiLanguage: languageField.input.value
       });
-      status.textContent = "已保存";
-    }, t);
+      status.textContent = i18n.t(currentLocale, "saved");
+    }, t, "save");
 
-    const runButton = createToolbarButton("保存并立即整理标签页", async () => {
-      status.textContent = "保存并开始整理…";
+    const runButton = createToolbarButton(i18n.t(currentLocale, "saveAndRun"), async () => {
+      status.textContent = i18n.t(currentLocale, "saveAndStart");
       await saveInlineSettings({
         providerId: providerField.input.value,
         endpoint: endpointField.input.value,
         apiKey: apiKeyField.input.value,
         model: getCurrentModelValue(),
         preference: preferenceField.input.value,
-        experimentalTitleRewriteEnabled: toggleField.input.checked
+        experimentalTitleRewriteEnabled: toggleField.input.checked,
+        uiLanguage: languageField.input.value
       });
       const response = await chrome.runtime.sendMessage({ type: "run-ai-organization" });
-      status.textContent = response?.summary || response?.reason || (response?.ok ? "已开始" : response?.error || "整理失败");
+      status.textContent = response?.summary || response?.reason || (response?.ok ? i18n.t(currentLocale, "started") : response?.error || i18n.t(currentLocale, "organizeFailed"));
       if (response?.ok || response?.skipped) {
         close();
       }
-    }, t);
+    }, t, "save_run");
 
     actionRow.appendChild(saveButton);
     actionRow.appendChild(runButton);
@@ -719,6 +782,7 @@ async function openTabSearch(prefetchedTabs) {
     shell.appendChild(endpointField.wrapper);
     shell.appendChild(apiKeyField.wrapper);
     shell.appendChild(modelField.wrapper);
+    shell.appendChild(languageField.wrapper);
     shell.appendChild(preferenceField.wrapper);
     shell.appendChild(toggleField.wrapper);
     shell.appendChild(actionRow);
@@ -736,13 +800,13 @@ async function openTabSearch(prefetchedTabs) {
 
       endpointField.input.value = nextDraft.endpoint;
       syncModelControls(nextDraft.providerId, nextDraft.model);
-      updateAIKeyPlaceholder(apiKeyField.input, nextDraft.providerId);
+      updateAIKeyPlaceholder(apiKeyField.input, nextDraft.providerId, languageField.input.value);
     });
 
     endpointField.input.addEventListener("input", () => {
       providerField.input.value = detectAIProviderPreset(endpointField.input.value);
       syncModelControls(providerField.input.value, getCurrentModelValue());
-      updateAIKeyPlaceholder(apiKeyField.input, providerField.input.value);
+      updateAIKeyPlaceholder(apiKeyField.input, providerField.input.value, languageField.input.value);
     });
 
     modelField.input.addEventListener("change", () => {
@@ -765,17 +829,18 @@ async function openTabSearch(prefetchedTabs) {
         endpointField.input.value = settings.endpoint;
         apiKeyField.input.value = settings.apiKey;
         syncModelControls(settings.providerId, settings.model);
+        languageField.input.value = settings.uiLanguage || currentLocale;
         preferenceField.input.value = settings.preference;
         toggleField.input.checked = settings.experimentalTitleRewriteEnabled;
-        updateAIKeyPlaceholder(apiKeyField.input, settings.providerId);
+        updateAIKeyPlaceholder(apiKeyField.input, settings.providerId, languageField.input.value);
       })
       .catch((error) => {
-        status.textContent = error instanceof Error ? error.message : "读取设置失败";
+        status.textContent = error instanceof Error ? error.message : i18n.t(currentLocale, "loadSettingsFailed");
       });
 
     function syncModelControls(providerId, modelValue) {
       const selection = resolveAIModelSelection(providerId, modelValue);
-      populateAIModelSelect(modelField.input, providerId, modelValue);
+      populateAIModelSelect(modelField.input, providerId, modelValue, languageField.input.value);
       modelField.input.value = selection.selectedValue;
       modelField.input.dataset.selectedPresetModel =
         selection.selectedValue === CUSTOM_AI_MODEL_OPTION_VALUE ? selection.options[0]?.value || "" : selection.selectedValue;
@@ -958,18 +1023,18 @@ async function openTabSearch(prefetchedTabs) {
     });
 
     const buttons = {
-      open: createActionButton("打开", async (event) => {
+      open: createActionButton(i18n.t(currentLocale, "open"), async (event) => {
         event.stopPropagation();
         await executeEntryAction(entry, "open");
-      }, t),
-      close: createActionButton("关闭", async (event) => {
+      }, t, "open"),
+      close: createActionButton(i18n.t(currentLocale, "close"), async (event) => {
         event.stopPropagation();
         await executeEntryAction(entry, "close");
-      }, t),
-      bookmark_close: createActionButton("收藏后关闭", async (event) => {
+      }, t, "close"),
+      bookmark_close: createActionButton(i18n.t(currentLocale, "bookmarkAndClose"), async (event) => {
         event.stopPropagation();
         await executeEntryAction(entry, "bookmark_close");
-      }, t)
+      }, t, "bookmark_close")
     };
 
     container.appendChild(buttons.open);
@@ -1149,7 +1214,7 @@ async function openTabSearch(prefetchedTabs) {
         footerFocusIndex = index;
         updateInteractiveState();
         await executeNaturalBatchAction(definition.action);
-      }, t);
+      }, t, definition.iconKey);
 
       button.addEventListener("mouseenter", () => {
         headerFocusIndex = -1;
@@ -1193,13 +1258,13 @@ async function openTabSearch(prefetchedTabs) {
 
 ensureSpinnerStyle();
 
-function createActionButton(label, onClick, tokens) {
+function createActionButton(label, onClick, tokens, iconKey = "") {
   const fg = (tokens && tokens.commandText) || "#1d4ed8";
   const bg = (tokens && tokens.subtleBg) || "rgba(15, 23, 42, 0.08)";
   const hoverBg = (tokens && tokens.hoverBg) || "rgba(15, 23, 42, 0.14)";
   const button = document.createElement("button");
   button.type = "button";
-  const icon = BUTTON_ICONS[label] || "";
+  const icon = BUTTON_ICONS[iconKey] || "";
   button.innerHTML = icon + `<span>${label}</span>`;
   setStyles(button, {
     display: "inline-flex",
@@ -1235,15 +1300,16 @@ function createActionButton(label, onClick, tokens) {
   return button;
 }
 
-function createToolbarButton(label, onClick, tokens) {
+function createToolbarButton(label, onClick, tokens, iconKey = "") {
   const fg = (tokens && tokens.commandText) || "#1d4ed8";
   const bg = (tokens && tokens.subtleBg) || "rgba(15, 23, 42, 0.08)";
   const hoverBg = (tokens && tokens.hoverBg) || "rgba(15, 23, 42, 0.14)";
   const button = document.createElement("button");
   button.type = "button";
-  const icon = BUTTON_ICONS[label] || "";
+  const icon = BUTTON_ICONS[iconKey] || "";
   button.innerHTML = icon + `<span>${label}</span>`;
   button.dataset.label = label;
+  button.dataset.iconKey = iconKey;
   setStyles(button, {
     display: "inline-flex",
     alignItems: "center",
@@ -1280,7 +1346,7 @@ function createToolbarButton(label, onClick, tokens) {
 function setToolbarButtonBusy(button, busy, busyLabel) {
   button.disabled = busy;
   const displayLabel = busy ? busyLabel : button.dataset.label || "";
-  const icon = BUTTON_ICONS[button.dataset.label] || "";
+  const icon = BUTTON_ICONS[button.dataset.iconKey] || "";
   button.innerHTML = icon + `<span>${displayLabel}</span>`;
   button.style.opacity = busy ? "0.72" : "1";
   button.style.cursor = busy ? "default" : "pointer";
