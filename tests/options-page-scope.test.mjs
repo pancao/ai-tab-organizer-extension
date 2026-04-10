@@ -68,7 +68,9 @@ function createExecutionContext() {
         }
       }
     },
-    AIProviderConfig: null
+    AIProviderConfig: null,
+    AITabInlineSettings: null,
+    AITabSearchCore: null
   };
 
   context.window = context;
@@ -118,6 +120,21 @@ function createExecutionContext() {
     updateAIKeyPlaceholder() {}
   };
   context.globalThis.AIProviderConfig = context.AIProviderConfig;
+  context.AITabInlineSettings = {
+    loadInlineSettings: async () => context.AIProviderConfig.resolveAISettingsDraft({}),
+    saveInlineSettings: async () => {}
+  };
+  context.globalThis.AITabInlineSettings = context.AITabInlineSettings;
+  context.AITabSearchCore = {
+    SEARCH_ACTIONS: ["open", "close", "bookmark_close"],
+    buildEntries: () => [],
+    buildNaturalEntries: () => [],
+    cycleAction: () => "open",
+    defaultActionForEntry: () => "open",
+    normalizeIndex: () => 0,
+    supportsActions: () => true
+  };
+  context.globalThis.AITabSearchCore = context.AITabSearchCore;
 
   return vm.createContext(context);
 }

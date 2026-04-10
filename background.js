@@ -102,7 +102,7 @@ async function openTabSearch() {
     try {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        files: ["ai-provider-config.js", "content.js"]
+        files: ["ai-provider-config.js", "search-inline-settings.js", "search-core.js", "content.js"]
       });
 
       await chrome.tabs.sendMessage(tab.id, payload);
