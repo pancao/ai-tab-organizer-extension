@@ -43,7 +43,7 @@ test("搜索相关脚本不再保留内嵌设置视图", () => {
 test("独立搜索页和按需注入清单不再加载内嵌设置依赖", () => {
   const searchHtml = readRepoFile("search.html");
 
-  assert.deepEqual(SEARCH_PANEL_INJECTION_FILES, ["search-core.js", "content.js"]);
+  assert.deepEqual(SEARCH_PANEL_INJECTION_FILES, ["i18n.js", "search-core.js", "content.js"]);
   assert.doesNotMatch(searchHtml, /ai-provider-config\.js/, "search.html 不应该再加载 ai-provider-config.js");
   assert.doesNotMatch(searchHtml, /search-inline-settings\.js/, "search.html 不应该再加载 search-inline-settings.js");
 });

@@ -7,6 +7,7 @@
     module.exports = api;
   }
 })(typeof globalThis !== "undefined" ? globalThis : this, function createAIProviderConfig() {
+  const i18n = typeof globalThis !== "undefined" ? globalThis.AITabI18n : null;
   const AI_PROVIDER_STORAGE_KEY = "aiProviderPresetId";
   const CUSTOM_AI_PROVIDER_ID = "custom";
   const CUSTOM_AI_MODEL_OPTION_VALUE = "__custom_model__";
@@ -19,6 +20,7 @@
     Object.freeze({
       id: "openai",
       label: "OpenAI",
+      localizedLabel: false,
       endpoint: "https://api.openai.com/v1/chat/completions",
       defaultModel: "gpt-4.1-mini",
       apiKeyPlaceholder: "填写 OpenAI API Key",
@@ -33,6 +35,7 @@
     Object.freeze({
       id: "openrouter",
       label: "OpenRouter",
+      localizedLabel: false,
       endpoint: "https://openrouter.ai/api/v1/chat/completions",
       defaultModel: "openai/gpt-4.1-mini",
       apiKeyPlaceholder: "填写 OpenRouter API Key",
@@ -47,6 +50,7 @@
     Object.freeze({
       id: "groq",
       label: "Groq",
+      localizedLabel: false,
       endpoint: "https://api.groq.com/openai/v1/chat/completions",
       defaultModel: "llama-3.3-70b-versatile",
       apiKeyPlaceholder: "填写 Groq API Key",
@@ -59,6 +63,7 @@
     Object.freeze({
       id: "deepseek",
       label: "DeepSeek",
+      localizedLabel: false,
       endpoint: "https://api.deepseek.com/v1/chat/completions",
       defaultModel: "deepseek-chat",
       apiKeyPlaceholder: "填写 DeepSeek API Key",
@@ -70,6 +75,7 @@
     Object.freeze({
       id: "siliconflow",
       label: "硅基流动",
+      localizedLabel: true,
       endpoint: "https://api.siliconflow.cn/v1/chat/completions",
       defaultModel: "Qwen/Qwen2.5-7B-Instruct",
       apiKeyPlaceholder: "填写硅基流动 API Key",
@@ -83,6 +89,7 @@
     Object.freeze({
       id: "dashscope",
       label: "阿里云百炼",
+      localizedLabel: true,
       endpoint: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
       defaultModel: "qwen-plus",
       apiKeyPlaceholder: "填写阿里云百炼 API Key",
@@ -95,6 +102,7 @@
     Object.freeze({
       id: CUSTOM_AI_PROVIDER_ID,
       label: "自定义",
+      localizedLabel: true,
       endpoint: DEFAULT_AI_ENDPOINT,
       defaultModel: DEFAULT_AI_MODEL,
       apiKeyPlaceholder: DEFAULT_CUSTOM_API_KEY_PLACEHOLDER,
@@ -104,8 +112,27 @@
 
   const presetMap = new Map(AI_PROVIDER_PRESETS.map((preset) => [preset.id, preset]));
 
-  function getAIProviderPreset(providerId) {
-    return presetMap.get(providerId) || presetMap.get(CUSTOM_AI_PROVIDER_ID);
+  function resolveLocale(locale) {
+    return i18n?.resolveUILanguage ? i18n.resolveUILanguage(locale) : "cn";
+  }
+
+  function localizePreset(preset, locale) {
+    const language = resolveLocale(locale);
+
+    if (!i18n) {
+      return preset;
+    }
+
+    return {
+      ...preset,
+      label: preset.localizedLabel ? i18n.getProviderLabel(preset.id, language, preset.label) : preset.label,
+      apiKeyPlaceholder: i18n.getProviderApiKeyPlaceholder(preset.id, language, preset.label)
+    };
+  }
+
+  function getAIProviderPreset(providerId, locale) {
+    const preset = presetMap.get(providerId) || presetMap.get(CUSTOM_AI_PROVIDER_ID);
+    return localizePreset(preset, locale);
   }
 
   function normalizeAIEndpoint(endpoint) {
@@ -168,8 +195,8 @@
     return CUSTOM_AI_PROVIDER_ID;
   }
 
-  function applyAIProviderPreset(providerId, currentDraft) {
-    const preset = getAIProviderPreset(providerId);
+  function applyAIProviderPreset(providerId, currentDraft, locale) {
+    const preset = getAIProviderPreset(providerId, locale);
     const draft = currentDraft || {};
 
     if (preset.id === CUSTOM_AI_PROVIDER_ID) {
@@ -191,12 +218,12 @@
     };
   }
 
-  function resolveAISettingsDraft(stored) {
+  function resolveAISettingsDraft(stored, locale) {
     const source = stored || {};
     const endpoint = normalizeAIEndpoint(source.aiEndpoint || DEFAULT_AI_ENDPOINT);
     const savedProviderId = String(source[AI_PROVIDER_STORAGE_KEY] || "").trim();
     const providerId = presetMap.has(savedProviderId) ? savedProviderId : detectAIProviderPreset(endpoint);
-    const preset = getAIProviderPreset(providerId);
+    const preset = getAIProviderPreset(providerId, locale);
 
     return {
       providerId,
@@ -205,7 +232,8 @@
       apiKeyPlaceholder: preset.apiKeyPlaceholder,
       model: String(source.aiModel || "").trim() || preset.defaultModel || DEFAULT_AI_MODEL,
       preference: source.aiPreference || "",
-      experimentalTitleRewriteEnabled: Boolean(source.experimentalTitleRewriteEnabled)
+      experimentalTitleRewriteEnabled: Boolean(source.experimentalTitleRewriteEnabled),
+      uiLanguage: i18n?.resolveUILanguage ? i18n.resolveUILanguage(source.uiLanguage) : "cn"
     };
   }
 
@@ -252,7 +280,7 @@
     };
   }
 
-  function populateAIProviderSelect(select) {
+  function populateAIProviderSelect(select, locale) {
     if (!select) {
       return;
     }
@@ -262,12 +290,12 @@
     AI_PROVIDER_PRESETS.forEach((preset) => {
       const option = select.ownerDocument.createElement("option");
       option.value = preset.id;
-      option.textContent = preset.label;
+      option.textContent = getAIProviderPreset(preset.id, locale).label;
       select.appendChild(option);
     });
   }
 
-  function populateAIModelSelect(select, providerId, currentModel) {
+  function populateAIModelSelect(select, providerId, currentModel, locale) {
     if (!select) {
       return;
     }
@@ -284,17 +312,17 @@
 
     const customOption = select.ownerDocument.createElement("option");
     customOption.value = CUSTOM_AI_MODEL_OPTION_VALUE;
-    customOption.textContent = "自定义模型";
+    customOption.textContent = i18n?.t ? i18n.t(locale, "customModelPlaceholder") : "自定义模型";
     select.appendChild(customOption);
     select.value = selection.selectedValue;
   }
 
-  function updateAIKeyPlaceholder(input, providerId) {
+  function updateAIKeyPlaceholder(input, providerId, locale) {
     if (!input) {
       return;
     }
 
-    input.placeholder = getAIProviderPreset(providerId).apiKeyPlaceholder;
+    input.placeholder = getAIProviderPreset(providerId, locale).apiKeyPlaceholder;
   }
 
   function stripCompletionPath(url) {

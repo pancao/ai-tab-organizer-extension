@@ -1,3 +1,61 @@
+const i18n = globalThis.AITabI18n || {
+  DEFAULT_UI_LANGUAGE: "cn",
+  async getStoredLanguage() {
+    return "cn";
+  },
+  getLocaleTag() {
+    return "zh-CN";
+  },
+  t(_locale, key) {
+    const fallback = {
+      search: "Search",
+      searchWindowTitle: "搜索标签页",
+      searchWindowSubtitle: "当前页面不支持页内面板时，会自动打开这个独立搜索窗口。",
+      searchInputPlaceholder: "通过关键词、网址、或一句话搜索标签",
+      organizeTabs: "整理标签页",
+      settings: "设置",
+      popupRunBusy: "整理中…",
+      naturalNoMatch: "自然语言搜索没有找到匹配标签页",
+      noMatchedTabs: "没有匹配的标签页",
+      naturalLoading: "正在进行自然语言搜索…",
+      provider: "服务商",
+      endpoint: "接口地址",
+      modelName: "模型名",
+      customModelPlaceholder: "输入自定义模型名",
+      language: "语言",
+      preference: "整理偏好",
+      preferencePlaceholder: "例如：工作相关靠前，阅读类折叠，娱乐类靠后。",
+      titleRewriteLabel: "实验功能：整理后简化网页标题",
+      titleRewriteHelperShort: "整理后尝试为可注入网页写入更短的临时标题。",
+      saveSettings: "保存设置",
+      saveAndRun: "保存并立即整理",
+      saving: "正在保存…",
+      saved: "已保存",
+      saveAndStart: "保存并开始整理…",
+      started: "已开始",
+      organizeFailed: "整理失败",
+      loadSettingsFailed: "读取设置失败",
+      open: "打开",
+      close: "关闭",
+      bookmarkAndClose: "收藏并关闭",
+      closeAndAddToBookmarks: "关闭并加入收藏",
+      closeMatchedTabs: "关闭搜索到的Tab",
+      newGroup: "新建分组",
+      settingsViewHint: "设置视图 · Esc 返回普通搜索",
+      defaultHint: "方向键选择结果，左右方向键切换动作，回车确认"
+    };
+    return fallback[key] || key;
+  },
+  getLanguageOptions() {
+    return [
+      { value: "en", label: "English" },
+      { value: "cn", label: "简体中文" },
+      { value: "cn-t", label: "繁體中文" },
+      { value: "jp", label: "日本語" },
+      { value: "espanol", label: "Español" }
+    ];
+  }
+};
 const {
   SEARCH_ACTIONS,
   buildEntries,
@@ -9,11 +67,6 @@ const {
 } = globalThis.AITabSearchCore;
 
 const ACTIONS = SEARCH_ACTIONS;
-const NATURAL_BATCH_ACTIONS = [
-  { action: "bookmark_close", label: "关闭并加入收藏" },
-  { action: "delete", label: "关闭搜索到的Tab" },
-  { action: "group", label: "新建分组" }
-];
 const UI_FONT_FAMILY = "sans-serif";
 
 initialize();
@@ -27,11 +80,31 @@ async function initialize() {
 
   const sourceWindowId = new URLSearchParams(window.location.search).get("sourceWindowId");
   const targetWindowId = sourceWindowId ? Number(sourceWindowId) : undefined;
+  const currentLocale = await i18n.getStoredLanguage();
+  const NATURAL_BATCH_ACTIONS = [
+    { action: "bookmark_close", label: i18n.t(currentLocale, "closeAndAddToBookmarks") },
+    { action: "delete", label: i18n.t(currentLocale, "closeMatchedTabs") },
+    { action: "group", label: i18n.t(currentLocale, "newGroup") }
+  ];
+  document.documentElement.lang = i18n.getLocaleTag(currentLocale);
+  const eyebrow = document.getElementById("search-window-eyebrow");
+  const titleNode = document.getElementById("search-window-title");
+  const subtitleNode = document.getElementById("search-window-subtitle");
+
+  if (eyebrow) {
+    eyebrow.textContent = i18n.t(currentLocale, "search");
+  }
+  if (titleNode) {
+    titleNode.textContent = i18n.t(currentLocale, "searchWindowTitle");
+  }
+  if (subtitleNode) {
+    subtitleNode.textContent = i18n.t(currentLocale, "searchWindowSubtitle");
+  }
 
   const response = await chrome.runtime.sendMessage({ type: "get-tabs" });
 
   if (!response?.ok) {
-    root.textContent = "无法读取标签页";
+    root.textContent = response?.error || i18n.t(currentLocale, "organizeFailed");
     return;
   }
 
@@ -66,7 +139,7 @@ async function initialize() {
 
   const input = document.createElement("input");
   input.type = "search";
-  input.placeholder = "通过关键词、网址、或一句话搜索标签";
+  input.placeholder = i18n.t(currentLocale, "searchInputPlaceholder");
   input.autocomplete = "off";
   input.spellcheck = false;
   input.autocapitalize = "off";
@@ -91,18 +164,21 @@ async function initialize() {
     fontFamily: UI_FONT_FAMILY
   });
 
-  const arrangeButton = createToolbarButton("整理Tab", async () => {
-    setToolbarButtonBusy(arrangeButton, true, "整理中…");
+  const arrangeLabel = i18n.t(currentLocale, "organizeTabs");
+  const settingsLabel = i18n.t(currentLocale, "settings");
+
+  const arrangeButton = createToolbarButton(arrangeLabel, async () => {
+    setToolbarButtonBusy(arrangeButton, true, i18n.t(currentLocale, "popupRunBusy"));
 
     try {
       await chrome.runtime.sendMessage({ type: "run-ai-organization", windowId: targetWindowId });
       window.close();
     } finally {
-      setToolbarButtonBusy(arrangeButton, false, "整理Tab");
+      setToolbarButtonBusy(arrangeButton, false, arrangeLabel);
     }
   });
 
-  const settingsButton = createToolbarButton("设置", async () => {
+  const settingsButton = createToolbarButton(settingsLabel, async () => {
     await openSettingsPage();
   });
 
@@ -358,7 +434,7 @@ async function initialize() {
       return;
     }
 
-    entries = searchMode === "natural" && naturalPreview ? buildNaturalEntries(naturalPreview) : buildEntries(tabs, input.value.trim());
+    entries = searchMode === "natural" && naturalPreview ? buildNaturalEntries(naturalPreview) : buildEntries(tabs, input.value.trim(), currentLocale);
     selectedIndex = normalizeIndex(selectedIndex, entries);
 
     if (!supportsActions(entries[selectedIndex])) {
@@ -371,7 +447,7 @@ async function initialize() {
 
     if (entries.length === 0) {
       const empty = document.createElement("div");
-      empty.textContent = searchMode === "natural" ? "自然语言搜索没有找到匹配标签页" : "没有匹配的标签页";
+      empty.textContent = searchMode === "natural" ? i18n.t(currentLocale, "naturalNoMatch") : i18n.t(currentLocale, "noMatchedTabs");
       setStyles(empty, {
         padding: "12px 14px 16px",
         flex: "0 0 auto",
@@ -421,7 +497,7 @@ async function initialize() {
     });
 
     const label = document.createElement("div");
-    label.textContent = "正在进行自然语言搜索…";
+    label.textContent = i18n.t(currentLocale, "naturalLoading");
 
     loading.appendChild(spinner);
     loading.appendChild(label);
@@ -555,15 +631,15 @@ async function initialize() {
     });
 
     const buttons = {
-      open: createActionButton("打开", async (event) => {
+      open: createActionButton(i18n.t(currentLocale, "open"), async (event) => {
         event.stopPropagation();
         await executeEntryAction(entry, "open");
       }),
-      close: createActionButton("关闭", async (event) => {
+      close: createActionButton(i18n.t(currentLocale, "close"), async (event) => {
         event.stopPropagation();
         await executeEntryAction(entry, "close");
       }),
-      bookmark_close: createActionButton("收藏并关闭", async (event) => {
+      bookmark_close: createActionButton(i18n.t(currentLocale, "bookmarkAndClose"), async (event) => {
         event.stopPropagation();
         await executeEntryAction(entry, "bookmark_close");
       })
@@ -644,7 +720,7 @@ async function initialize() {
       const response = await chrome.runtime.sendMessage({ type: "open-url", url: entry.url });
 
       if (!response?.ok) {
-        hint.textContent = response?.error || "打开失败";
+        hint.textContent = response?.error || i18n.t(currentLocale, "organizeFailed");
         return;
       }
 
@@ -659,7 +735,7 @@ async function initialize() {
     if (action === "close") {
       const response = await chrome.runtime.sendMessage({ type: "close-tab", tabId: entry.tabId });
       if (!response?.ok) {
-        hint.textContent = response?.error || "关闭标签页失败";
+        hint.textContent = response?.error || i18n.t(currentLocale, "organizeFailed");
         return;
       }
       tabs = tabs.filter((tab) => tab.id !== entry.tabId);
@@ -672,7 +748,7 @@ async function initialize() {
     if (action === "bookmark_close") {
       const response = await chrome.runtime.sendMessage({ type: "bookmark-and-close-tab", tabId: entry.tabId });
       if (!response?.ok) {
-        hint.textContent = response?.error || "收藏并关闭失败";
+        hint.textContent = response?.error || i18n.t(currentLocale, "organizeFailed");
         return;
       }
       tabs = tabs.filter((tab) => tab.id !== entry.tabId);
@@ -709,7 +785,7 @@ async function initialize() {
 
     if (!response?.ok) {
       searchMode = "default";
-      hint.textContent = response?.error || "自然语言搜索失败";
+      hint.textContent = response?.error || i18n.t(currentLocale, "organizeFailed");
       rebuildRows();
       return;
     }
@@ -731,18 +807,18 @@ async function initialize() {
 
   function updateHint() {
     if (isNaturalLoading) {
-      hint.textContent = "自然语言搜索中…";
+      hint.textContent = i18n.t(currentLocale, "naturalLoading");
       return;
     }
 
     if (searchMode === "natural") {
       hint.textContent = naturalPreview?.rationale
-        ? `自然语言结果：${naturalPreview.rationale} · Esc 返回普通搜索`
-        : "自然语言结果 · Esc 返回普通搜索";
+        ? `${naturalPreview.rationale} · Esc`
+        : "Esc";
       return;
     }
 
-    hint.textContent = "方向键选择结果，左右方向键切换动作，回车确认";
+    hint.textContent = i18n.t(currentLocale, "defaultHint");
   }
 
   function renderFooter() {
@@ -796,7 +872,7 @@ async function initialize() {
     });
 
     if (!response?.ok) {
-      hint.textContent = response?.error || "批量操作失败";
+      hint.textContent = response?.error || i18n.t(currentLocale, "organizeFailed");
       return;
     }
 
@@ -902,6 +978,174 @@ function updateActionSelection(buttons, selectedAction) {
 
 function isCaretAtEnd(input) {
   return input.selectionStart === input.selectionEnd && input.selectionEnd === input.value.length;
+}
+
+function createSettingsField(label, type, placeholder) {
+  const wrapper = document.createElement("label");
+  setStyles(wrapper, {
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
+    padding: "0 10px",
+    fontSize: "12px",
+    color: "#0f172a"
+  });
+
+  const text = document.createElement("span");
+  text.textContent = label;
+
+  const input = document.createElement("input");
+  input.type = type;
+  input.placeholder = placeholder;
+  setStyles(input, {
+    width: "100%",
+    border: "1px solid rgba(15, 23, 42, 0.12)",
+    borderRadius: "12px",
+    padding: "10px 12px",
+    paddingRight: "40px",
+    outline: "none",
+    background: "#ffffff",
+    appearance: "none",
+    WebkitAppearance: "none",
+    backgroundImage:
+      "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2 4.5L6 8L10 4.5' stroke='%236d6d67' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")",
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: "right 14px center",
+    backgroundSize: "12px 12px",
+    color: "#0f172a",
+    fontSize: "13px"
+  });
+
+  wrapper.appendChild(text);
+  wrapper.appendChild(input);
+  return { wrapper, input };
+}
+
+function createSettingsSelect(label) {
+  const wrapper = document.createElement("label");
+  setStyles(wrapper, {
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
+    padding: "0 10px",
+    fontSize: "12px",
+    color: "#0f172a"
+  });
+
+  const text = document.createElement("span");
+  text.textContent = label;
+
+  const input = document.createElement("select");
+  setStyles(input, {
+    width: "100%",
+    border: "1px solid rgba(15, 23, 42, 0.12)",
+    borderRadius: "12px",
+    padding: "10px 12px",
+    outline: "none",
+    background: "#ffffff",
+    color: "#0f172a",
+    fontSize: "13px"
+  });
+
+  wrapper.appendChild(text);
+  wrapper.appendChild(input);
+  return { wrapper, input };
+}
+
+function createSettingsStandaloneInput(type, placeholder) {
+  const input = document.createElement("input");
+  input.type = type;
+  input.placeholder = placeholder;
+  setStyles(input, {
+    width: "100%",
+    border: "1px solid rgba(15, 23, 42, 0.12)",
+    borderRadius: "12px",
+    padding: "10px 12px",
+    outline: "none",
+    background: "#ffffff",
+    color: "#0f172a",
+    fontSize: "13px"
+  });
+  return input;
+}
+
+function createSettingsTextarea(label, placeholder) {
+  const wrapper = document.createElement("label");
+  setStyles(wrapper, {
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
+    padding: "0 10px",
+    fontSize: "12px",
+    color: "#0f172a"
+  });
+
+  const text = document.createElement("span");
+  text.textContent = label;
+
+  const input = document.createElement("textarea");
+  input.rows = 4;
+  input.placeholder = placeholder;
+  setStyles(input, {
+    width: "100%",
+    border: "1px solid rgba(15, 23, 42, 0.12)",
+    borderRadius: "12px",
+    padding: "10px 12px",
+    outline: "none",
+    background: "#ffffff",
+    color: "#0f172a",
+    fontSize: "13px",
+    resize: "vertical"
+  });
+
+  wrapper.appendChild(text);
+  wrapper.appendChild(input);
+  return { wrapper, input };
+}
+
+function createSettingsToggle(label, helper) {
+  const wrapper = document.createElement("label");
+  setStyles(wrapper, {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "10px",
+    padding: "4px 10px 0"
+  });
+
+  const input = document.createElement("input");
+  input.type = "checkbox";
+  setStyles(input, {
+    marginTop: "2px"
+  });
+
+  const content = document.createElement("div");
+  setStyles(content, {
+    display: "flex",
+    flexDirection: "column",
+    gap: "4px",
+    minWidth: "0"
+  });
+
+  const title = document.createElement("div");
+  title.textContent = label;
+  setStyles(title, {
+    fontSize: "13px",
+    fontWeight: "600",
+    color: "#0f172a"
+  });
+
+  const sub = document.createElement("div");
+  sub.textContent = helper;
+  setStyles(sub, {
+    fontSize: "12px",
+    color: "rgba(15, 23, 42, 0.62)"
+  });
+
+  content.appendChild(title);
+  content.appendChild(sub);
+  wrapper.appendChild(input);
+  wrapper.appendChild(content);
+  return { wrapper, input };
 }
 
 function ensureSpinnerStyle() {

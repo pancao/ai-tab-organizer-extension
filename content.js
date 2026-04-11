@@ -1,3 +1,57 @@
+const i18n = globalThis.AITabI18n || {
+  DEFAULT_UI_LANGUAGE: "cn",
+  async getStoredLanguage() {
+    return "cn";
+  },
+  getLocaleTag() {
+    return "zh-CN";
+  },
+  t(_locale, key) {
+    const fallback = {
+      searchInputPlaceholder: "通过关键词、网址、或一句话搜索标签",
+      closeAllAndBookmark: "关闭全部并收藏",
+      closeAll: "关闭所有",
+      newGroup: "新建分组",
+      organizeTabs: "整理标签页",
+      popupRunBusy: "整理中…",
+      settings: "设置",
+      naturalNoMatch: "自然语言搜索没有找到匹配标签页",
+      noMatchedTabs: "没有匹配的标签页",
+      naturalLoading: "正在进行自然语言搜索…",
+      settingsHelperShort: "设置主题色、服务商、AI 接口、语言和整理偏好。",
+      provider: "服务商",
+      endpoint: "接口地址",
+      modelName: "模型名",
+      customModelPlaceholder: "输入自定义模型名",
+      language: "语言",
+      preference: "整理偏好",
+      preferencePlaceholder: "例如：工作相关靠前，阅读类折叠，娱乐类靠后。",
+      titleRewriteLabel: "实验功能：整理后简化网页标题",
+      titleRewriteHelperShort: "整理后尝试为可注入网页写入更短的临时标题。",
+      saveSettings: "保存设置",
+      saveAndRun: "保存并立即整理",
+      saving: "正在保存…",
+      saved: "已保存",
+      saveAndStart: "保存并开始整理…",
+      started: "已开始",
+      organizeFailed: "整理失败",
+      loadSettingsFailed: "读取设置失败",
+      open: "打开",
+      close: "关闭",
+      bookmarkAndClose: "收藏后关闭"
+    };
+    return fallback[key] || key;
+  },
+  getLanguageOptions() {
+    return [
+      { value: "en", label: "English" },
+      { value: "cn", label: "简体中文" },
+      { value: "cn-t", label: "繁體中文" },
+      { value: "jp", label: "日本語" },
+      { value: "espanol", label: "Español" }
+    ];
+  }
+};
 const {
   SEARCH_ACTIONS,
   buildEntries,
@@ -10,25 +64,19 @@ const {
 
 const OVERLAY_ID = "__ai_tab_organizer_search_overlay__";
 const ACTIONS = SEARCH_ACTIONS;
-const NATURAL_BATCH_ACTIONS = [
-  { action: "bookmark_close", label: "关闭全部并收藏" },
-  { action: "delete", label: "关闭所有" },
-  { action: "group", label: "新建分组" }
-];
 const UI_FONT_FAMILY = '"Inter", sans-serif';
 
 const _ic = (d) => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto">${d}</svg>`;
 const BUTTON_ICONS = {
-  "整理标签页": _ic('<path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2 19 5"/><path d="m3 21 9-9"/><path d="M12.2 6.2 11 5"/>'),
-  "设置": _ic('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'),
-  "打开": _ic('<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>'),
-  "关闭": _ic('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'),
-  "收藏后关闭": _ic('<path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>'),
-  "关闭全部并收藏": _ic('<path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>'),
-  "关闭所有": _ic('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'),
-  "新建分组": _ic('<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/>'),
-  "保存设置": _ic('<polyline points="20 6 9 17 4 12"/>'),
-  "保存并立即整理标签页": _ic('<path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2 19 5"/><path d="m3 21 9-9"/><path d="M12.2 6.2 11 5"/>'),
+  organize: _ic('<path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2 19 5"/><path d="m3 21 9-9"/><path d="M12.2 6.2 11 5"/>'),
+  settings: _ic('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'),
+  open: _ic('<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>'),
+  close: _ic('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'),
+  bookmark_close: _ic('<path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>'),
+  delete: _ic('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'),
+  group: _ic('<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/>'),
+  save: _ic('<polyline points="20 6 9 17 4 12"/>'),
+  save_run: _ic('<path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2 19 5"/><path d="m3 21 9-9"/><path d="M12.2 6.2 11 5"/>'),
 };
 
 const THEME_COLORS_CONFIG = {
@@ -38,6 +86,14 @@ const THEME_COLORS_CONFIG = {
   purple: { accent: "#7c3aed", light: { page: "#f5f0ff", surface: "rgba(245,240,255,0.82)", inputBg: "rgba(255,255,255,0.82)", border: "rgba(124,58,237,0.14)", text: "#0f172a", muted: "rgba(124,58,237,0.50)", subtleBg: "rgba(124,58,237,0.07)", hoverBg: "rgba(124,58,237,0.20)", selectedBg: "rgba(124,58,237,0.20)", overlayBg: "rgba(24,16,42,0.18)", commandBg: "rgba(124,58,237,0.10)", commandText: "#6d28d9", commandMuted: "rgba(109,40,217,0.78)", urlShadow: "rgba(124,58,237,0.12)" }, dark: { page: "#18102a", surface: "rgba(34,24,64,0.88)", inputBg: "rgba(40,30,72,0.82)", border: "rgba(167,139,250,0.16)", text: "#e5e5e5", muted: "rgba(196,181,253,0.55)", subtleBg: "rgba(167,139,250,0.08)", hoverBg: "rgba(167,139,250,0.26)", selectedBg: "rgba(167,139,250,0.26)", overlayBg: "rgba(0,0,0,0.50)", commandBg: "rgba(167,139,250,0.12)", commandText: "#c4b5fd", commandMuted: "rgba(196,181,253,0.78)", urlShadow: "rgba(167,139,250,0.10)" } },
   orange: { accent: "#ea580c", light: { page: "#fff6ed", surface: "rgba(255,246,237,0.82)", inputBg: "rgba(255,255,255,0.82)", border: "rgba(234,88,12,0.14)", text: "#0f172a", muted: "rgba(234,88,12,0.50)", subtleBg: "rgba(234,88,12,0.07)", hoverBg: "rgba(234,88,12,0.20)", selectedBg: "rgba(234,88,12,0.20)", overlayBg: "rgba(31,18,8,0.18)", commandBg: "rgba(234,88,12,0.10)", commandText: "#c2410c", commandMuted: "rgba(194,65,12,0.78)", urlShadow: "rgba(234,88,12,0.12)" }, dark: { page: "#1f1208", surface: "rgba(42,26,16,0.88)", inputBg: "rgba(48,32,21,0.82)", border: "rgba(251,146,60,0.16)", text: "#e5e5e5", muted: "rgba(253,186,116,0.55)", subtleBg: "rgba(251,146,60,0.08)", hoverBg: "rgba(251,146,60,0.26)", selectedBg: "rgba(251,146,60,0.26)", overlayBg: "rgba(0,0,0,0.50)", commandBg: "rgba(251,146,60,0.12)", commandText: "#fdba74", commandMuted: "rgba(253,186,116,0.78)", urlShadow: "rgba(251,146,60,0.10)" } }
 };
+
+const THEME_SWATCH_COLORS = [
+  { key: "neutral", bg: "#1f1f1c", label: "默认" },
+  { key: "blue", bg: "#2563eb", label: "蓝色" },
+  { key: "green", bg: "#16a34a", label: "绿色" },
+  { key: "purple", bg: "#7c3aed", label: "紫色" },
+  { key: "orange", bg: "#ea580c", label: "橙色" }
+];
 
 async function getThemeTokens() {
   const { themeColor, themeMode } = await chrome.storage.local.get(["themeColor", "themeMode"]);
@@ -67,6 +123,12 @@ async function openTabSearch(prefetchedTabs) {
 
   let tabs;
   let theme;
+  const currentLocale = await i18n.getStoredLanguage();
+  const NATURAL_BATCH_ACTIONS = [
+    { action: "bookmark_close", label: i18n.t(currentLocale, "closeAllAndBookmark"), iconKey: "bookmark_close" },
+    { action: "delete", label: i18n.t(currentLocale, "closeAll"), iconKey: "delete" },
+    { action: "group", label: i18n.t(currentLocale, "newGroup"), iconKey: "group" }
+  ];
 
   if (prefetchedTabs) {
     tabs = prefetchedTabs;
@@ -94,6 +156,11 @@ async function openTabSearch(prefetchedTabs) {
   let isNaturalLoading = false;
 
   let t = theme.tokens;
+
+  async function reloadTheme() {
+    theme = await getThemeTokens();
+    t = theme.tokens;
+  }
 
   const overlay = document.createElement("div");
   overlay.id = OVERLAY_ID;
@@ -152,7 +219,7 @@ async function openTabSearch(prefetchedTabs) {
 
   const input = document.createElement("input");
   input.type = "text";
-  input.placeholder = "通过关键词、网址、或一句话搜索标签";
+  input.placeholder = i18n.t(currentLocale, "searchInputPlaceholder");
   input.autocomplete = "off";
   input.spellcheck = false;
   input.autocapitalize = "off";
@@ -203,22 +270,22 @@ async function openTabSearch(prefetchedTabs) {
   inputWrapper.appendChild(input);
   inputWrapper.appendChild(clearButton);
 
-  const arrangeButton = createToolbarButton("整理标签页", async () => {
-    setToolbarButtonBusy(arrangeButton, true, "整理中…");
+  const arrangeButton = createToolbarButton(i18n.t(currentLocale, "organizeTabs"), async () => {
+    setToolbarButtonBusy(arrangeButton, true, i18n.t(currentLocale, "popupRunBusy"));
 
     try {
       await chrome.runtime.sendMessage({ type: "run-ai-organization" });
       close();
     } finally {
-      setToolbarButtonBusy(arrangeButton, false, "整理标签页");
+      setToolbarButtonBusy(arrangeButton, false, i18n.t(currentLocale, "organizeTabs"));
     }
-  }, t);
+  }, t, "organize");
 
-  const settingsButton = createToolbarButton("设置", async () => {
+  const settingsButton = createToolbarButton(i18n.t(currentLocale, "settings"), async () => {
     await openSettingsPage();
-  }, t);
-  settingsButton.innerHTML = BUTTON_ICONS["设置"];
-  settingsButton.title = "设置";
+  }, t, "settings");
+  settingsButton.innerHTML = BUTTON_ICONS.settings;
+  settingsButton.title = i18n.t(currentLocale, "settings");
   setStyles(settingsButton, { padding: "10px" });
 
   const headerButtons = [arrangeButton, settingsButton];
@@ -497,7 +564,7 @@ async function openTabSearch(prefetchedTabs) {
       return;
     }
 
-    entries = searchMode === "natural" && naturalPreview ? buildNaturalEntries(naturalPreview) : buildEntries(tabs, input.value.trim());
+    entries = searchMode === "natural" && naturalPreview ? buildNaturalEntries(naturalPreview) : buildEntries(tabs, input.value.trim(), currentLocale);
     selectedIndex = normalizeIndex(selectedIndex, entries);
 
     if (!supportsActions(entries[selectedIndex])) {
@@ -510,7 +577,7 @@ async function openTabSearch(prefetchedTabs) {
 
     if (entries.length === 0) {
       const empty = document.createElement("div");
-      empty.textContent = searchMode === "natural" ? "自然语言搜索没有找到匹配标签页" : "没有匹配的标签页";
+      empty.textContent = searchMode === "natural" ? i18n.t(currentLocale, "naturalNoMatch") : i18n.t(currentLocale, "noMatchedTabs");
       setStyles(empty, {
         padding: "12px 14px 16px",
         flex: "0 0 auto",
@@ -560,7 +627,7 @@ async function openTabSearch(prefetchedTabs) {
     });
 
     const label = document.createElement("div");
-    label.textContent = "正在进行自然语言搜索…";
+    label.textContent = i18n.t(currentLocale, "naturalLoading");
 
     loading.appendChild(spinner);
     loading.appendChild(label);
@@ -737,18 +804,18 @@ async function openTabSearch(prefetchedTabs) {
     });
 
     const buttons = {
-      open: createActionButton("打开", async (event) => {
+      open: createActionButton(i18n.t(currentLocale, "open"), async (event) => {
         event.stopPropagation();
         await executeEntryAction(entry, "open");
-      }, t),
-      close: createActionButton("关闭", async (event) => {
+      }, t, "open"),
+      close: createActionButton(i18n.t(currentLocale, "close"), async (event) => {
         event.stopPropagation();
         await executeEntryAction(entry, "close");
-      }, t),
-      bookmark_close: createActionButton("收藏后关闭", async (event) => {
+      }, t, "close"),
+      bookmark_close: createActionButton(i18n.t(currentLocale, "bookmarkAndClose"), async (event) => {
         event.stopPropagation();
         await executeEntryAction(entry, "bookmark_close");
-      }, t)
+      }, t, "bookmark_close")
     };
 
     container.appendChild(buttons.open);
@@ -756,6 +823,18 @@ async function openTabSearch(prefetchedTabs) {
     container.appendChild(buttons.bookmark_close);
 
     return { container, buttons };
+  }
+
+  function applyThemeToPanel() {
+    overlay.style.background = t.overlayBg;
+    panel.style.background = t.surface;
+    panel.style.borderColor = t.border;
+    input.style.color = t.text;
+    clearButton.style.background = t.subtleBg;
+    clearButton.style.color = t.muted;
+    footer.style.background = t.surface;
+    footer.style.borderTopColor = t.border;
+    updateInteractiveState();
   }
 
   function updateInteractiveState() {
@@ -863,6 +942,11 @@ async function openTabSearch(prefetchedTabs) {
     close();
   }
 
+  async function openSettingsPage() {
+    await chrome.runtime.sendMessage({ type: "open-settings-page" });
+    close();
+  }
+
   async function enterNaturalSearch() {
     const query = input.value.trim();
 
@@ -898,11 +982,6 @@ async function openTabSearch(prefetchedTabs) {
     rebuildRows();
   }
 
-  async function openSettingsPage() {
-    await chrome.runtime.sendMessage({ type: "open-settings-page" });
-    close();
-  }
-
   function renderFooter() {
     footer.textContent = "";
     footerButtons = [];
@@ -921,7 +1000,7 @@ async function openTabSearch(prefetchedTabs) {
         footerFocusIndex = index;
         updateInteractiveState();
         await executeNaturalBatchAction(definition.action);
-      }, t);
+      }, t, definition.iconKey);
 
       button.addEventListener("mouseenter", () => {
         headerFocusIndex = -1;
@@ -965,13 +1044,13 @@ async function openTabSearch(prefetchedTabs) {
 
 ensureSpinnerStyle();
 
-function createActionButton(label, onClick, tokens) {
+function createActionButton(label, onClick, tokens, iconKey = "") {
   const fg = (tokens && tokens.commandText) || "#1d4ed8";
   const bg = (tokens && tokens.subtleBg) || "rgba(15, 23, 42, 0.08)";
   const hoverBg = (tokens && tokens.hoverBg) || "rgba(15, 23, 42, 0.14)";
   const button = document.createElement("button");
   button.type = "button";
-  const icon = BUTTON_ICONS[label] || "";
+  const icon = BUTTON_ICONS[iconKey] || "";
   button.innerHTML = icon + `<span>${label}</span>`;
   setStyles(button, {
     display: "inline-flex",
@@ -1007,15 +1086,16 @@ function createActionButton(label, onClick, tokens) {
   return button;
 }
 
-function createToolbarButton(label, onClick, tokens) {
+function createToolbarButton(label, onClick, tokens, iconKey = "") {
   const fg = (tokens && tokens.commandText) || "#1d4ed8";
   const bg = (tokens && tokens.subtleBg) || "rgba(15, 23, 42, 0.08)";
   const hoverBg = (tokens && tokens.hoverBg) || "rgba(15, 23, 42, 0.14)";
   const button = document.createElement("button");
   button.type = "button";
-  const icon = BUTTON_ICONS[label] || "";
+  const icon = BUTTON_ICONS[iconKey] || "";
   button.innerHTML = icon + `<span>${label}</span>`;
   button.dataset.label = label;
+  button.dataset.iconKey = iconKey;
   setStyles(button, {
     display: "inline-flex",
     alignItems: "center",
@@ -1052,7 +1132,7 @@ function createToolbarButton(label, onClick, tokens) {
 function setToolbarButtonBusy(button, busy, busyLabel) {
   button.disabled = busy;
   const displayLabel = busy ? busyLabel : button.dataset.label || "";
-  const icon = BUTTON_ICONS[button.dataset.label] || "";
+  const icon = BUTTON_ICONS[button.dataset.iconKey] || "";
   button.innerHTML = icon + `<span>${displayLabel}</span>`;
   button.style.opacity = busy ? "0.72" : "1";
   button.style.cursor = busy ? "default" : "pointer";
@@ -1083,6 +1163,291 @@ function formatLastAccessed(lastAccessed) {
 
 function isCaretAtEnd(input) {
   return input.selectionStart === input.selectionEnd && input.selectionEnd === input.value.length;
+}
+
+function createSettingsField(label, type, placeholder, tokens) {
+  const fg = (tokens && tokens.text) || "#0f172a";
+  const inputBg = (tokens && tokens.inputBg) || "rgba(255, 255, 255, 0.42)";
+  const borderC = (tokens && tokens.border) || "rgba(15, 23, 42, 0.10)";
+  const settingsInputBg = inputBg.replace(/[\d.]+\)$/, "0.42)");
+  const settingsBorderC = borderC.replace(/[\d.]+\)$/, "0.10)");
+  const wrapper = document.createElement("label");
+  setStyles(wrapper, {
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
+    padding: "0 10px",
+    fontSize: "12px",
+    color: fg
+  });
+
+  const text = document.createElement("span");
+  text.textContent = label;
+  setStyles(text, { fontWeight: "700" });
+
+  const input = document.createElement("input");
+  input.type = type;
+  input.placeholder = placeholder;
+  input.autocomplete = "off";
+  input.setAttribute("data-lpignore", "true");
+  input.setAttribute("data-1p-ignore", "true");
+  input.setAttribute("data-form-type", "other");
+  setStyles(input, {
+    width: "100%",
+    border: `1px solid ${settingsBorderC}`,
+    borderRadius: "12px",
+    padding: "10px 12px",
+    outline: "none",
+    background: settingsInputBg,
+    color: fg,
+    fontSize: "13px"
+  });
+
+  wrapper.appendChild(text);
+  wrapper.appendChild(input);
+  return { wrapper, input };
+}
+
+function createSettingsSelect(label, tokens) {
+  const fg = (tokens && tokens.text) || "#0f172a";
+  const inputBg = (tokens && tokens.inputBg) || "rgba(255, 255, 255, 0.42)";
+  const borderC = (tokens && tokens.border) || "rgba(15, 23, 42, 0.10)";
+  const settingsInputBg = inputBg.replace(/[\d.]+\)$/, "0.42)");
+  const settingsBorderC = borderC.replace(/[\d.]+\)$/, "0.10)");
+  const wrapper = document.createElement("label");
+  setStyles(wrapper, {
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
+    padding: "0 10px",
+    fontSize: "12px",
+    color: fg
+  });
+
+  const text = document.createElement("span");
+  text.textContent = label;
+  setStyles(text, { fontWeight: "700" });
+
+  const input = document.createElement("select");
+  setStyles(input, {
+    width: "100%",
+    border: `1px solid ${settingsBorderC}`,
+    borderRadius: "12px",
+    padding: "10px 12px",
+    outline: "none",
+    background: settingsInputBg,
+    color: fg,
+    fontSize: "13px"
+  });
+
+  wrapper.appendChild(text);
+  wrapper.appendChild(input);
+  return { wrapper, input };
+}
+
+function createSettingsStandaloneInput(type, placeholder, tokens) {
+  const fg = (tokens && tokens.text) || "#0f172a";
+  const inputBg = (tokens && tokens.inputBg) || "rgba(255, 255, 255, 0.42)";
+  const borderC = (tokens && tokens.border) || "rgba(15, 23, 42, 0.10)";
+  const settingsInputBg = inputBg.replace(/[\d.]+\)$/, "0.42)");
+  const settingsBorderC = borderC.replace(/[\d.]+\)$/, "0.10)");
+  const input = document.createElement("input");
+  input.type = type;
+  input.placeholder = placeholder;
+  setStyles(input, {
+    width: "100%",
+    border: `1px solid ${settingsBorderC}`,
+    borderRadius: "12px",
+    padding: "10px 12px",
+    outline: "none",
+    background: settingsInputBg,
+    color: fg,
+    fontSize: "13px"
+  });
+  return input;
+}
+
+function createSettingsTextarea(label, placeholder, tokens) {
+  const fg = (tokens && tokens.text) || "#0f172a";
+  const inputBg = (tokens && tokens.inputBg) || "rgba(255, 255, 255, 0.42)";
+  const borderC = (tokens && tokens.border) || "rgba(15, 23, 42, 0.10)";
+  const settingsInputBg = inputBg.replace(/[\d.]+\)$/, "0.42)");
+  const settingsBorderC = borderC.replace(/[\d.]+\)$/, "0.10)");
+  const wrapper = document.createElement("label");
+  setStyles(wrapper, {
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
+    padding: "0 10px",
+    fontSize: "12px",
+    color: fg
+  });
+
+  const text = document.createElement("span");
+  text.textContent = label;
+  setStyles(text, { fontWeight: "700" });
+
+  const input = document.createElement("textarea");
+  input.rows = 4;
+  input.placeholder = placeholder;
+  setStyles(input, {
+    width: "100%",
+    border: `1px solid ${settingsBorderC}`,
+    borderRadius: "12px",
+    padding: "10px 12px",
+    outline: "none",
+    background: settingsInputBg,
+    color: fg,
+    fontSize: "13px",
+    resize: "vertical"
+  });
+
+  wrapper.appendChild(text);
+  wrapper.appendChild(input);
+  return { wrapper, input };
+}
+
+function createSettingsToggle(label, helper, tokens, accentColor) {
+  const fg = (tokens && tokens.text) || "#0f172a";
+  const mutedC = (tokens && tokens.muted) || "rgba(15, 23, 42, 0.62)";
+  const wrapper = document.createElement("label");
+  setStyles(wrapper, {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "10px",
+    padding: "4px 10px 0"
+  });
+
+  const input = document.createElement("input");
+  input.type = "checkbox";
+  setStyles(input, {
+    marginTop: "2px",
+    accentColor: accentColor || "auto"
+  });
+
+  const content = document.createElement("div");
+  setStyles(content, {
+    display: "flex",
+    flexDirection: "column",
+    gap: "4px",
+    minWidth: "0"
+  });
+
+  const title = document.createElement("div");
+  title.textContent = label;
+  setStyles(title, {
+    fontSize: "13px",
+    fontWeight: "600",
+    color: fg
+  });
+
+  const sub = document.createElement("div");
+  sub.textContent = helper;
+  setStyles(sub, {
+    fontSize: "12px",
+    color: mutedC
+  });
+
+  content.appendChild(title);
+  content.appendChild(sub);
+  wrapper.appendChild(input);
+  wrapper.appendChild(content);
+  return { wrapper, input };
+}
+
+function createThemePicker(tokens, currentTheme, onChange) {
+  const fg = (tokens && tokens.text) || "#0f172a";
+  const bg = (tokens && tokens.subtleBg) || "rgba(15, 23, 42, 0.08)";
+  const borderC = (tokens && tokens.border) || "rgba(15, 23, 42, 0.12)";
+
+  const row = document.createElement("div");
+  setStyles(row, {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "12px",
+    padding: "6px 10px",
+    marginBottom: "4px"
+  });
+
+  const swatchRow = document.createElement("div");
+  setStyles(swatchRow, { display: "flex", gap: "8px" });
+
+  THEME_SWATCH_COLORS.forEach((swatch) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.title = swatch.label;
+    setStyles(btn, {
+      width: "28px",
+      height: "28px",
+      borderRadius: "50%",
+      border: swatch.key === currentTheme.color ? `2px solid ${fg}` : "2px solid transparent",
+      background: swatch.bg,
+      cursor: "pointer",
+      padding: "0",
+      outline: "none",
+      transition: "border-color 120ms ease, transform 120ms ease"
+    });
+    btn.addEventListener("mouseenter", () => { btn.style.transform = "scale(1.12)"; });
+    btn.addEventListener("mouseleave", () => { btn.style.transform = "scale(1)"; });
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onChange(swatch.key, undefined);
+      swatchRow.querySelectorAll("button").forEach((b) => { b.style.borderColor = "transparent"; });
+      btn.style.borderColor = fg;
+    });
+    swatchRow.appendChild(btn);
+  });
+
+  const modeBtn = document.createElement("button");
+  modeBtn.type = "button";
+  modeBtn.title = "切换深浅色";
+  modeBtn.dataset.mode = currentTheme.mode;
+  modeBtn.innerHTML = `
+    <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 6px;pointer-events:none;color:${tokens.muted}">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </span>
+    <span style="position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:${tokens.inputBg};box-shadow:0 1px 3px rgba(0,0,0,0.18);transition:transform 180ms ease;pointer-events:none;display:flex;align-items:center;justify-content:center;color:${currentTheme.accent};transform:${currentTheme.mode === "dark" ? "translateX(28px)" : "none"}">
+      ${currentTheme.mode === "dark"
+      ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
+      : '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>'}
+    </span>
+  `;
+  setStyles(modeBtn, {
+    position: "relative",
+    display: "inline-flex",
+    alignItems: "center",
+    width: "56px",
+    height: "28px",
+    padding: "0",
+    border: `1px solid ${borderC}`,
+    borderRadius: "999px",
+    background: bg,
+    cursor: "pointer",
+    flexShrink: "0"
+  });
+  modeBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const next = currentTheme.mode === "dark" ? "light" : "dark";
+    currentTheme.mode = next;
+    modeBtn.dataset.mode = next;
+    const thumb = modeBtn.querySelector("span:last-child");
+    if (thumb) {
+      thumb.style.transform = next === "dark" ? "translateX(28px)" : "none";
+      thumb.style.color = currentTheme.accent;
+      thumb.innerHTML = next === "dark"
+        ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
+        : '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>';
+    }
+    onChange(undefined, next);
+  });
+
+  row.appendChild(swatchRow);
+  row.appendChild(modeBtn);
+  return row;
 }
 
 function ensureSpinnerStyle() {

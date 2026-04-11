@@ -14,11 +14,13 @@ function createFakeElement() {
     textContent: "",
     dataset: {},
     style: {},
+    ownerDocument: null,
     classList: {
       toggle() {},
       add() {},
       remove() {}
     },
+    appendChild() {},
     addEventListener() {},
     removeEventListener() {},
     setAttribute() {}
@@ -31,9 +33,16 @@ function createExecutionContext() {
 
   const document = {
     documentElement: { dataset: {} },
+    createElement() {
+      const element = createFakeElement();
+      element.ownerDocument = document;
+      return element;
+    },
     getElementById(id) {
       if (!elementCache.has(id)) {
-        elementCache.set(id, createFakeElement());
+        const element = createFakeElement();
+        element.ownerDocument = document;
+        elementCache.set(id, element);
       }
 
       return elementCache.get(id);
@@ -68,12 +77,34 @@ function createExecutionContext() {
         }
       }
     },
+    AITabI18n: null,
     AIProviderConfig: null,
     AITabSearchCore: null
   };
 
   context.window = context;
   context.globalThis = context;
+  context.AITabI18n = {
+    DEFAULT_UI_LANGUAGE: "cn",
+    UI_LANGUAGE_STORAGE_KEY: "uiLanguage",
+    getLanguageOptions() {
+      return [{ value: "cn", label: "简体中文" }, { value: "en", label: "English" }];
+    },
+    getLocaleTag() {
+      return "zh-CN";
+    },
+    getStoredLanguage: async () => "cn",
+    getThemeOptions() {
+      return [];
+    },
+    resolveUILanguage(value) {
+      return value || "cn";
+    },
+    t(_locale, key) {
+      return key;
+    }
+  };
+  context.globalThis.AITabI18n = context.AITabI18n;
   context.AIProviderConfig = {
     AI_PROVIDER_STORAGE_KEY: "aiProvider",
     CUSTOM_AI_MODEL_OPTION_VALUE: "__custom__",
@@ -113,7 +144,8 @@ function createExecutionContext() {
         apiKey: stored.aiApiKey || "",
         model: stored.aiModel || "gpt-4.1-mini",
         preference: stored.aiPreference || "",
-        experimentalTitleRewriteEnabled: Boolean(stored.experimentalTitleRewriteEnabled)
+        experimentalTitleRewriteEnabled: Boolean(stored.experimentalTitleRewriteEnabled),
+        uiLanguage: stored.uiLanguage || "cn"
       };
     },
     updateAIKeyPlaceholder() {}
