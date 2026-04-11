@@ -79,7 +79,6 @@ function createExecutionContext() {
     },
     AITabI18n: null,
     AIProviderConfig: null,
-    AITabInlineSettings: null,
     AITabSearchCore: null
   };
 
@@ -152,11 +151,6 @@ function createExecutionContext() {
     updateAIKeyPlaceholder() {}
   };
   context.globalThis.AIProviderConfig = context.AIProviderConfig;
-  context.AITabInlineSettings = {
-    loadInlineSettings: async () => context.AIProviderConfig.resolveAISettingsDraft({}),
-    saveInlineSettings: async () => {}
-  };
-  context.globalThis.AITabInlineSettings = context.AITabInlineSettings;
   context.AITabSearchCore = {
     SEARCH_ACTIONS: ["open", "close", "bookmark_close"],
     buildEntries: () => [],

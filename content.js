@@ -1,12 +1,3 @@
-const {
-  CUSTOM_AI_MODEL_OPTION_VALUE,
-  applyAIProviderPreset,
-  detectAIProviderPreset,
-  populateAIModelSelect,
-  populateAIProviderSelect,
-  resolveAIModelSelection,
-  updateAIKeyPlaceholder
-} = globalThis.AIProviderConfig;
 const i18n = globalThis.AITabI18n || {
   DEFAULT_UI_LANGUAGE: "cn",
   async getStoredLanguage() {
@@ -61,7 +52,6 @@ const i18n = globalThis.AITabI18n || {
     ];
   }
 };
-const { loadInlineSettings, saveInlineSettings } = globalThis.AITabInlineSettings;
 const {
   SEARCH_ACTIONS,
   buildEntries,
@@ -292,7 +282,7 @@ async function openTabSearch(prefetchedTabs) {
   }, t, "organize");
 
   const settingsButton = createToolbarButton(i18n.t(currentLocale, "settings"), async () => {
-    await enterSettingsView();
+    await openSettingsPage();
   }, t, "settings");
   settingsButton.innerHTML = BUTTON_ICONS.settings;
   settingsButton.title = i18n.t(currentLocale, "settings");
@@ -381,7 +371,7 @@ async function openTabSearch(prefetchedTabs) {
     const hasActiveTabEntry = supportsActions(activeEntry);
 
     if (event.key === "Escape") {
-      if (searchMode === "natural" || searchMode === "settings") {
+      if (searchMode === "natural") {
         searchMode = "default";
         naturalPreview = null;
         headerFocusIndex = -1;
@@ -574,12 +564,6 @@ async function openTabSearch(prefetchedTabs) {
       return;
     }
 
-    if (searchMode === "settings") {
-      renderFooter();
-      renderSettingsView();
-      return;
-    }
-
     entries = searchMode === "natural" && naturalPreview ? buildNaturalEntries(naturalPreview) : buildEntries(tabs, input.value.trim(), currentLocale);
     selectedIndex = normalizeIndex(selectedIndex, entries);
 
@@ -648,209 +632,6 @@ async function openTabSearch(prefetchedTabs) {
     loading.appendChild(spinner);
     loading.appendChild(label);
     list.appendChild(loading);
-  }
-
-  async function enterSettingsView() {
-    searchMode = "settings";
-    naturalPreview = null;
-    headerFocusIndex = -1;
-    footerFocusIndex = -1;
-    selectedIndex = -1;
-    selectedAction = null;
-    hoveredIndex = null;
-
-    renderFooter();
-    renderSettingsView();
-  }
-
-  function renderSettingsView() {
-    entries = [];
-    rowNodes = [];
-    list.textContent = "";
-
-    const shell = document.createElement("div");
-    setStyles(shell, {
-      display: "flex",
-      flexDirection: "column",
-      gap: "12px",
-      padding: "4px 4px 10px",
-      minWidth: "0"
-    });
-
-    const title = document.createElement("div");
-    title.textContent = i18n.t(currentLocale, "settings");
-    setStyles(title, {
-      padding: "4px 10px 0",
-      fontSize: "14px",
-      fontWeight: "700",
-      color: theme.accent
-    });
-
-    const helper = document.createElement("div");
-    helper.textContent = i18n.t(currentLocale, "settingsHelperShort");
-    setStyles(helper, {
-      padding: "0 10px",
-      fontSize: "12px",
-      color: t.muted
-    });
-
-    const themeRow = createThemePicker(t, theme, async (newColor, newMode) => {
-      if (newColor !== undefined) {
-        await chrome.storage.local.set({ themeColor: newColor });
-      }
-      if (newMode !== undefined) {
-        await chrome.storage.local.set({ themeMode: newMode });
-      }
-      await reloadTheme();
-      applyThemeToPanel();
-    });
-
-    const status = document.createElement("div");
-    setStyles(status, {
-      padding: "0 10px",
-      fontSize: "12px",
-      color: t.muted,
-      minHeight: "18px"
-    });
-
-    const providerField = createSettingsSelect(i18n.t(currentLocale, "provider"), t);
-    populateAIProviderSelect(providerField.input, currentLocale);
-
-    const endpointField = createSettingsField(i18n.t(currentLocale, "endpoint"), "text", "https://api.openai.com/v1/chat/completions", t);
-    const apiKeyField = createSettingsField("API Key", "password", "sk-...", t);
-    const modelField = createSettingsSelect(i18n.t(currentLocale, "modelName"), t);
-    const customModelInput = createSettingsStandaloneInput("text", i18n.t(currentLocale, "customModelPlaceholder"), t);
-    customModelInput.style.display = "none";
-    modelField.wrapper.appendChild(customModelInput);
-    const languageField = createSettingsSelect(i18n.t(currentLocale, "language"), t);
-    i18n.getLanguageOptions().forEach((item) => {
-      const option = document.createElement("option");
-      option.value = item.value;
-      option.textContent = item.label;
-      languageField.input.appendChild(option);
-    });
-    const preferenceField = createSettingsTextarea(i18n.t(currentLocale, "preference"), i18n.t(currentLocale, "preferencePlaceholder"), t);
-    const toggleField = createSettingsToggle(i18n.t(currentLocale, "titleRewriteLabel"), i18n.t(currentLocale, "titleRewriteHelperShort"), t, theme.accent);
-
-    const actionRow = document.createElement("div");
-    setStyles(actionRow, {
-      display: "flex",
-      gap: "8px",
-      padding: "4px 10px 0",
-      flexWrap: "wrap"
-    });
-
-    const saveButton = createToolbarButton(i18n.t(currentLocale, "saveSettings"), async () => {
-      status.textContent = i18n.t(currentLocale, "saving");
-      await saveInlineSettings({
-        providerId: providerField.input.value,
-        endpoint: endpointField.input.value,
-        apiKey: apiKeyField.input.value,
-        model: getCurrentModelValue(),
-        preference: preferenceField.input.value,
-        experimentalTitleRewriteEnabled: toggleField.input.checked,
-        uiLanguage: languageField.input.value
-      });
-      status.textContent = i18n.t(currentLocale, "saved");
-    }, t, "save");
-
-    const runButton = createToolbarButton(i18n.t(currentLocale, "saveAndRun"), async () => {
-      status.textContent = i18n.t(currentLocale, "saveAndStart");
-      await saveInlineSettings({
-        providerId: providerField.input.value,
-        endpoint: endpointField.input.value,
-        apiKey: apiKeyField.input.value,
-        model: getCurrentModelValue(),
-        preference: preferenceField.input.value,
-        experimentalTitleRewriteEnabled: toggleField.input.checked,
-        uiLanguage: languageField.input.value
-      });
-      const response = await chrome.runtime.sendMessage({ type: "run-ai-organization" });
-      status.textContent = response?.summary || response?.reason || (response?.ok ? i18n.t(currentLocale, "started") : response?.error || i18n.t(currentLocale, "organizeFailed"));
-      if (response?.ok || response?.skipped) {
-        close();
-      }
-    }, t, "save_run");
-
-    actionRow.appendChild(saveButton);
-    actionRow.appendChild(runButton);
-
-    shell.appendChild(title);
-    shell.appendChild(helper);
-    shell.appendChild(themeRow);
-    shell.appendChild(providerField.wrapper);
-    shell.appendChild(endpointField.wrapper);
-    shell.appendChild(apiKeyField.wrapper);
-    shell.appendChild(modelField.wrapper);
-    shell.appendChild(languageField.wrapper);
-    shell.appendChild(preferenceField.wrapper);
-    shell.appendChild(toggleField.wrapper);
-    shell.appendChild(actionRow);
-    shell.appendChild(status);
-    list.appendChild(shell);
-
-    providerField.input.addEventListener("change", () => {
-      const nextDraft = applyAIProviderPreset(providerField.input.value, {
-        endpoint: endpointField.input.value,
-        apiKey: apiKeyField.input.value,
-        model: getCurrentModelValue(),
-        preference: preferenceField.input.value,
-        experimentalTitleRewriteEnabled: toggleField.input.checked
-      });
-
-      endpointField.input.value = nextDraft.endpoint;
-      syncModelControls(nextDraft.providerId, nextDraft.model);
-      updateAIKeyPlaceholder(apiKeyField.input, nextDraft.providerId, languageField.input.value);
-    });
-
-    endpointField.input.addEventListener("input", () => {
-      providerField.input.value = detectAIProviderPreset(endpointField.input.value);
-      syncModelControls(providerField.input.value, getCurrentModelValue());
-      updateAIKeyPlaceholder(apiKeyField.input, providerField.input.value, languageField.input.value);
-    });
-
-    modelField.input.addEventListener("change", () => {
-      const isCustom = modelField.input.value === CUSTOM_AI_MODEL_OPTION_VALUE;
-
-      if (isCustom && !customModelInput.value.trim()) {
-        customModelInput.value = modelField.input.dataset.selectedPresetModel || "";
-      }
-
-      if (!isCustom) {
-        modelField.input.dataset.selectedPresetModel = modelField.input.value;
-      }
-
-      customModelInput.style.display = isCustom ? "block" : "none";
-    });
-
-    loadInlineSettings()
-      .then((settings) => {
-        providerField.input.value = settings.providerId;
-        endpointField.input.value = settings.endpoint;
-        apiKeyField.input.value = settings.apiKey;
-        syncModelControls(settings.providerId, settings.model);
-        languageField.input.value = settings.uiLanguage || currentLocale;
-        preferenceField.input.value = settings.preference;
-        toggleField.input.checked = settings.experimentalTitleRewriteEnabled;
-        updateAIKeyPlaceholder(apiKeyField.input, settings.providerId, languageField.input.value);
-      })
-      .catch((error) => {
-        status.textContent = error instanceof Error ? error.message : i18n.t(currentLocale, "loadSettingsFailed");
-      });
-
-    function syncModelControls(providerId, modelValue) {
-      const selection = resolveAIModelSelection(providerId, modelValue);
-      populateAIModelSelect(modelField.input, providerId, modelValue, languageField.input.value);
-      modelField.input.value = selection.selectedValue;
-      modelField.input.dataset.selectedPresetModel =
-        selection.selectedValue === CUSTOM_AI_MODEL_OPTION_VALUE ? selection.options[0]?.value || "" : selection.selectedValue;
-      customModelInput.value = selection.customValue;
-      customModelInput.style.display = selection.selectedValue === CUSTOM_AI_MODEL_OPTION_VALUE ? "block" : "none";
-    }
-
-    function getCurrentModelValue() {
-      return modelField.input.value === CUSTOM_AI_MODEL_OPTION_VALUE ? customModelInput.value.trim() : modelField.input.value;
-    }
   }
 
   function createRow(entry, index) {
@@ -1118,7 +899,7 @@ async function openTabSearch(prefetchedTabs) {
     }
 
     if (entry.kind === "command" && entry.command === "settings") {
-      await enterSettingsView();
+      await openSettingsPage();
       return;
     }
 
@@ -1158,6 +939,11 @@ async function openTabSearch(prefetchedTabs) {
     }
 
     await chrome.runtime.sendMessage({ type: "activate-tab", tabId: entry.tabId });
+    close();
+  }
+
+  async function openSettingsPage() {
+    await chrome.runtime.sendMessage({ type: "open-settings-page" });
     close();
   }
 
