@@ -40,7 +40,7 @@
 [`manifest.json`](/Users/zhaolixing/GitHub/ai-tab-organizer-extension/manifest.json) 定义了几个关键点：
 
 - `background.service_worker = background.js`
-- `content_scripts` 会把 `ai-provider-config.js` 和 `content.js` 注入到所有网址
+- 没有常驻 `content_scripts`，搜索面板改成通过 `chrome.scripting.executeScript()` 按需注入
 - `options_page = options.html`
 - 注册了两个命令：
   - `search-tabs`
@@ -72,7 +72,7 @@
 | `get-organization-state` | `popup.js` | 读取后台当前整理状态 |
 | `run-ai-organization` | `popup.js` `options.js` `search.js` `content.js` | 对当前窗口或指定窗口执行 AI 整理 |
 | `run-tab-search` | `popup.js` | 打开搜索面板 |
-| `open-settings-page` | 预留 | 打开设置页 |
+| `open-settings-page` | `popup.js` `search.js` `content.js` | 打开统一设置页 |
 | `get-tabs` | `search.js` `content.js` | 获取可搜索标签页列表 |
 | `activate-tab` | `search.js` `content.js` | 切到某个标签页 |
 | `open-url` | `search.js` `content.js` | 直接打开网址或执行浏览器搜索 |
@@ -182,11 +182,10 @@
 - 处理模型下拉和自定义模型输入框的切换
 - 通过挂到 `globalThis` 和 `module.exports`，同时服务浏览器页面和 Node 测试
 
-这个文件被三个地方复用：
+这个文件主要被两个运行面复用：
 
 1. `options.js`
-2. `search.js`
-3. `content.js`
+2. `background-ai-settings.mjs`
 
 ## 7. UI 分层
 
@@ -216,8 +215,8 @@
 
 两者的差别主要在外观和容器：
 
-- `content.js` 是页内浮层，带主题色、玻璃质感、图标、访问时间、内联主题切换
-- `search.js` 是独立窗口，样式更朴素，也支持内联设置，但没有页内浮层那套视觉强化
+- `content.js` 是页内浮层，带主题色、玻璃质感、图标、访问时间
+- `search.js` 是独立窗口，样式更朴素
 
 ## 8. 测试覆盖情况
 
@@ -239,12 +238,12 @@
 
 ### 9.1 `content.js` 和 `search.js` 有大量平行实现
 
-这两个文件不是简单的“共享核心 + 薄皮肤”，而是复制了一整套很接近的状态机、结果构建逻辑、设置表单逻辑和动作执行逻辑。
+这两个文件不是简单的“共享核心 + 薄皮肤”，而是复制了一整套很接近的状态机、结果构建逻辑和动作执行逻辑。
 
 这带来的直接影响是：
 
 - 一个入口修了交互，另一个入口很容易忘记补
-- 搜索规则、自然语言操作、设置逻辑容易慢慢长歪
+- 搜索规则和自然语言操作逻辑容易慢慢长歪
 - 测试成本会越来越高
 
 如果后面要继续做搜索体验，最值得先收的就是这一块。
