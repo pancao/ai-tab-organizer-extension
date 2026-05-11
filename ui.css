@@ -533,6 +533,48 @@ textarea {
   line-height: 1.5;
 }
 
+.inline-number-control {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.inline-number-control input {
+  width: 88px;
+  min-height: 32px;
+  padding: 6px 8px;
+}
+
+.inline-number-control input:disabled {
+  opacity: 0.55;
+}
+
+.inline-number-control em {
+  font-style: normal;
+}
+
+.mini-button {
+  min-height: 32px;
+  border: 1px solid var(--bg-toggle-border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  background: var(--input-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.mini-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .minimal-actions {
   margin-top: 18px;
 }

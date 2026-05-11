@@ -10,6 +10,7 @@
     "128": "Arc Tabs.png"
   },
   "permissions": [
+    "alarms",
     "bookmarks",
     "search",
     "scripting",

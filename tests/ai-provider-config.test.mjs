@@ -99,7 +99,9 @@ test("resolves stored settings using saved provider id when available", () => {
     aiApiKey: "sk-or-v1-test",
     aiModel: "",
     aiPreference: "group by task",
-    experimentalTitleRewriteEnabled: true
+    experimentalTitleRewriteEnabled: true,
+    autoCloseUnusedTabsEnabled: true,
+    autoCloseUnusedTabsHours: 48
   });
 
   assert.equal(draft.providerId, "openrouter");
@@ -109,6 +111,8 @@ test("resolves stored settings using saved provider id when available", () => {
   assert.equal(draft.model, "openai/gpt-4.1-mini");
   assert.equal(draft.preference, "group by task");
   assert.equal(draft.experimentalTitleRewriteEnabled, true);
+  assert.equal(draft.autoCloseUnusedTabsEnabled, true);
+  assert.equal(draft.autoCloseUnusedTabsHours, 48);
 });
 
 test("falls back to defaults for blank settings", () => {

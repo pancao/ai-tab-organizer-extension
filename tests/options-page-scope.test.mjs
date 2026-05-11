@@ -122,6 +122,9 @@ function createExecutionContext(storedSettings = {}) {
     normalizeAIEndpoint(value) {
       return value || "https://api.openai.com/v1/chat/completions";
     },
+    normalizeAutoCloseUnusedTabsHours(value) {
+      return Number(value) || 24;
+    },
     populateAIModelSelect(element, providerId, modelValue) {
       element.value = modelValue || "gpt-4.1-mini";
       element.dataset.providerId = providerId || "openai";
@@ -145,6 +148,8 @@ function createExecutionContext(storedSettings = {}) {
         model: stored.aiModel || "gpt-4.1-mini",
         preference: stored.aiPreference || "",
         experimentalTitleRewriteEnabled: Boolean(stored.experimentalTitleRewriteEnabled),
+        autoCloseUnusedTabsEnabled: Boolean(stored.autoCloseUnusedTabsEnabled),
+        autoCloseUnusedTabsHours: Number(stored.autoCloseUnusedTabsHours) || 24,
         uiLanguage: stored.uiLanguage || "cn"
       };
     },

@@ -93,6 +93,19 @@
           </span>
         </label>
 
+        <label class="toggle-field experimental-number-field">
+          <input id="auto-close-unused-tabs-input" type="checkbox" />
+          <span>
+            <strong id="auto-close-unused-tabs-label">实验功能：自动关闭长时间未使用的标签页</strong>
+            <small id="auto-close-unused-tabs-helper">开启后，自动关闭超过指定小时未访问的未固定网页标签页。当前激活或正在播放声音的标签页会被保留。</small>
+            <div class="inline-number-control">
+              <input id="auto-close-unused-tabs-hours-input" type="number" min="1" max="720" step="1" value="24" />
+              <em id="auto-close-unused-tabs-hours-label">小时</em>
+              <button id="auto-close-unused-tabs-test-button" class="mini-button" type="button">立即测试</button>
+            </div>
+          </span>
+        </label>
+
         <div class="button-row minimal-actions">
           <button id="save-button" class="primary-button">保存设置</button>
           <button id="run-button" class="secondary-button">保存并立即整理</button>

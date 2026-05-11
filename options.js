@@ -5,6 +5,7 @@ const {
   CUSTOM_AI_MODEL_OPTION_VALUE,
   applyAIProviderPreset,
   detectAIProviderPreset,
+  normalizeAutoCloseUnusedTabsHours,
   normalizeAIEndpoint,
   populateAIModelSelect,
   populateAIProviderSelect,
@@ -21,6 +22,9 @@ const modelInput = document.getElementById("model-input");
 const languageSelect = document.getElementById("language-select");
 const preferenceInput = document.getElementById("preference-input");
 const titleRewriteInput = document.getElementById("title-rewrite-input");
+const autoCloseUnusedTabsInput = document.getElementById("auto-close-unused-tabs-input");
+const autoCloseUnusedTabsHoursInput = document.getElementById("auto-close-unused-tabs-hours-input");
+const autoCloseUnusedTabsTestButton = document.getElementById("auto-close-unused-tabs-test-button");
 const saveButton = document.getElementById("save-button");
 const runButton = document.getElementById("run-button");
 const statusText = document.getElementById("status-text");
@@ -67,6 +71,8 @@ providerSelect.addEventListener("change", () => {
     model: getCurrentModelValue(),
     preference: preferenceInput.value,
     experimentalTitleRewriteEnabled: titleRewriteInput.checked,
+    autoCloseUnusedTabsEnabled: autoCloseUnusedTabsInput.checked,
+    autoCloseUnusedTabsHours: normalizeAutoCloseUnusedTabsHours(autoCloseUnusedTabsHoursInput.value),
     uiLanguage: currentLocale
   }, currentLocale);
 
@@ -93,6 +99,23 @@ modelSelect.addEventListener("change", () => {
   }
 
   modelInput.classList.toggle("hidden", !isCustom);
+});
+
+autoCloseUnusedTabsInput.addEventListener("change", syncAutoCloseUnusedTabsControls);
+
+autoCloseUnusedTabsTestButton.addEventListener("click", async () => {
+  setBusy(true, i18n.t(currentLocale, "autoCloseUnusedTabsTesting"));
+
+  try {
+    await saveSettings();
+    const closedCount = await runAutoCloseUnusedTabsTest();
+    setBusy(false, i18n.t(currentLocale, "autoCloseUnusedTabsTestDone", { count: closedCount }));
+  } catch (error) {
+    setBusy(
+      false,
+      error instanceof Error ? error.message : i18n.t(currentLocale, "autoCloseUnusedTabsTestFailed")
+    );
+  }
 });
 
 function updateSwatchSelection(color) {
@@ -141,6 +164,8 @@ async function initialize() {
     "aiModel",
     "aiPreference",
     "experimentalTitleRewriteEnabled",
+    "autoCloseUnusedTabsEnabled",
+    "autoCloseUnusedTabsHours",
     "themeColor",
     "themeMode",
     i18n.UI_LANGUAGE_STORAGE_KEY
@@ -156,6 +181,9 @@ async function initialize() {
   syncModelControls(draft.providerId, draft.model);
   preferenceInput.value = draft.preference;
   titleRewriteInput.checked = draft.experimentalTitleRewriteEnabled;
+  autoCloseUnusedTabsInput.checked = draft.autoCloseUnusedTabsEnabled;
+  autoCloseUnusedTabsHoursInput.value = draft.autoCloseUnusedTabsHours;
+  syncAutoCloseUnusedTabsControls();
   updateSwatchSelection(stored.themeColor || "neutral");
   updateModeToggle(stored.themeMode || "light");
   renderLocale();
@@ -172,6 +200,8 @@ async function saveSettings() {
     aiModel: getCurrentModelValue(),
     aiPreference: preferenceInput.value.trim(),
     experimentalTitleRewriteEnabled: titleRewriteInput.checked,
+    autoCloseUnusedTabsEnabled: autoCloseUnusedTabsInput.checked,
+    autoCloseUnusedTabsHours: normalizeAutoCloseUnusedTabsHours(autoCloseUnusedTabsHoursInput.value),
     [i18n.UI_LANGUAGE_STORAGE_KEY]: currentLocale
   });
 
@@ -192,9 +222,52 @@ function getCurrentModelValue() {
   return modelSelect.value === CUSTOM_AI_MODEL_OPTION_VALUE ? modelInput.value.trim() : modelSelect.value;
 }
 
+function syncAutoCloseUnusedTabsControls() {
+  autoCloseUnusedTabsHoursInput.disabled = !autoCloseUnusedTabsInput.checked;
+  autoCloseUnusedTabsTestButton.disabled = !autoCloseUnusedTabsInput.checked;
+}
+
+async function runAutoCloseUnusedTabsTest() {
+  if (!autoCloseUnusedTabsInput.checked) {
+    throw new Error(i18n.t(currentLocale, "autoCloseUnusedTabsDisabled"));
+  }
+
+  const thresholdMs = normalizeAutoCloseUnusedTabsHours(autoCloseUnusedTabsHoursInput.value) * 60 * 60 * 1000;
+  const now = Date.now();
+  const tabs = await chrome.tabs.query({});
+  const tabIds = tabs.filter((tab) => shouldAutoCloseUnusedTab(tab, now, thresholdMs)).map((tab) => tab.id);
+
+  if (tabIds.length > 0) {
+    await chrome.tabs.remove(tabIds);
+  }
+
+  return tabIds.length;
+}
+
+function shouldAutoCloseUnusedTab(tab, now, thresholdMs) {
+  if (!tab?.id || tab.pinned || tab.active || tab.audible) {
+    return false;
+  }
+
+  const lastAccessed = Number(tab.lastAccessed);
+
+  if (!Number.isFinite(lastAccessed) || lastAccessed <= 0 || now - lastAccessed < thresholdMs) {
+    return false;
+  }
+
+  const url = String(tab.url || tab.pendingUrl || "").trim();
+
+  try {
+    return ["http:", "https:"].includes(new URL(url).protocol);
+  } catch (_error) {
+    return false;
+  }
+}
+
 function setBusy(busy, message) {
   saveButton.disabled = busy;
   runButton.disabled = busy;
+  autoCloseUnusedTabsTestButton.disabled = busy || !autoCloseUnusedTabsInput.checked;
   statusText.textContent = message;
 }
 
@@ -213,6 +286,19 @@ function renderLocale() {
   document.getElementById("preference-label").textContent = i18n.t(currentLocale, "preference");
   document.getElementById("title-rewrite-label").textContent = i18n.t(currentLocale, "titleRewriteLabel");
   document.getElementById("title-rewrite-helper").textContent = i18n.t(currentLocale, "titleRewriteHelper");
+  document.getElementById("auto-close-unused-tabs-label").textContent = i18n.t(
+    currentLocale,
+    "autoCloseUnusedTabsLabel"
+  );
+  document.getElementById("auto-close-unused-tabs-helper").textContent = i18n.t(
+    currentLocale,
+    "autoCloseUnusedTabsHelper"
+  );
+  document.getElementById("auto-close-unused-tabs-hours-label").textContent = i18n.t(
+    currentLocale,
+    "autoCloseUnusedTabsHoursLabel"
+  );
+  autoCloseUnusedTabsTestButton.textContent = i18n.t(currentLocale, "autoCloseUnusedTabsTestButton");
   saveButton.textContent = i18n.t(currentLocale, "saveSettings");
   runButton.textContent = i18n.t(currentLocale, "saveAndRun");
   preferenceInput.placeholder = i18n.t(currentLocale, "preferencePlaceholder");

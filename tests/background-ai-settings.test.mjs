@@ -8,7 +8,9 @@ test("resolveBackgroundAISettings 会复用共享 endpoint 归一化规则", () 
     aiApiKey: "sk-test",
     aiModel: "",
     aiPreference: "group by task",
-    experimentalTitleRewriteEnabled: true
+    experimentalTitleRewriteEnabled: true,
+    autoCloseUnusedTabsEnabled: true,
+    autoCloseUnusedTabsHours: 12
   });
 
   assert.equal(settings.endpoint, "https://example.com/custom/v1/chat/completions");
@@ -16,4 +18,6 @@ test("resolveBackgroundAISettings 会复用共享 endpoint 归一化规则", () 
   assert.equal(settings.model, "gpt-4.1-mini");
   assert.equal(settings.preference, "group by task");
   assert.equal(settings.experimentalTitleRewriteEnabled, true);
+  assert.equal(settings.autoCloseUnusedTabsEnabled, true);
+  assert.equal(settings.autoCloseUnusedTabsHours, 12);
 });

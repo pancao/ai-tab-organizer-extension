@@ -15,6 +15,9 @@
   const DEFAULT_AI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
   const DEFAULT_AI_MODEL = "gpt-4.1-mini";
   const DEFAULT_CUSTOM_API_KEY_PLACEHOLDER = "填写兼容 OpenAI 的 API Key";
+  const AUTO_CLOSE_UNUSED_TABS_DEFAULT_HOURS = 24;
+  const AUTO_CLOSE_UNUSED_TABS_MIN_HOURS = 1;
+  const AUTO_CLOSE_UNUSED_TABS_MAX_HOURS = 720;
 
   const AI_PROVIDER_PRESETS = Object.freeze([
     Object.freeze({
@@ -246,8 +249,23 @@
       model: String(source.aiModel || "").trim() || preset.defaultModel || DEFAULT_AI_MODEL,
       preference: source.aiPreference || "",
       experimentalTitleRewriteEnabled: Boolean(source.experimentalTitleRewriteEnabled),
+      autoCloseUnusedTabsEnabled: Boolean(source.autoCloseUnusedTabsEnabled),
+      autoCloseUnusedTabsHours: normalizeAutoCloseUnusedTabsHours(source.autoCloseUnusedTabsHours),
       uiLanguage: i18n?.resolveUILanguage ? i18n.resolveUILanguage(source.uiLanguage) : "cn"
     };
+  }
+
+  function normalizeAutoCloseUnusedTabsHours(input) {
+    const value = Number(input);
+
+    if (!Number.isFinite(value)) {
+      return AUTO_CLOSE_UNUSED_TABS_DEFAULT_HOURS;
+    }
+
+    return Math.min(
+      AUTO_CLOSE_UNUSED_TABS_MAX_HOURS,
+      Math.max(AUTO_CLOSE_UNUSED_TABS_MIN_HOURS, Math.round(value))
+    );
   }
 
   function getAIModelOptions(providerId) {
@@ -355,6 +373,9 @@
   return Object.freeze({
     AI_PROVIDER_STORAGE_KEY,
     AI_PROVIDER_PRESETS,
+    AUTO_CLOSE_UNUSED_TABS_DEFAULT_HOURS,
+    AUTO_CLOSE_UNUSED_TABS_MAX_HOURS,
+    AUTO_CLOSE_UNUSED_TABS_MIN_HOURS,
     CUSTOM_AI_MODEL_OPTION_VALUE,
     CUSTOM_AI_PROVIDER_ID,
     DEFAULT_AI_ENDPOINT,
@@ -365,6 +386,7 @@
     getAIModelOptions,
     getAIProviderPreset,
     normalizeAIEndpoint,
+    normalizeAutoCloseUnusedTabsHours,
     populateAIModelSelect,
     resolveAIModelSelection,
     populateAIProviderSelect,

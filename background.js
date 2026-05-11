@@ -1,4 +1,9 @@
-import { getCandidateTabs } from "./background-core.mjs";
+import {
+  buildExistingTabGroupContext,
+  getAutoCloseUnusedTabIds,
+  getCandidateTabs,
+  normalizeAutoCloseUnusedTabsSettings
+} from "./background-core.mjs";
 import {
   TITLE_REWRITE_MAX_LENGTH,
   deriveBatchLabel,
@@ -13,6 +18,8 @@ import "./i18n.js";
 import { SEARCH_PANEL_INJECTION_FILES } from "./search-panel-injection.mjs";
 
 const SEARCH_PANEL_BLOCKED_PROTOCOLS = ["about:", "brave:", "chrome:", "edge:", "vivaldi:"];
+const AUTO_CLOSE_UNUSED_TABS_ALARM = "auto-close-unused-tabs";
+const AUTO_CLOSE_CHECK_PERIOD_MINUTES = 15;
 const i18n = globalThis.AITabI18n;
 
 let organizationState = createIdleState();
@@ -22,8 +29,37 @@ function t(locale, key, vars) {
 }
 
 chrome.runtime.onInstalled.addListener((details) => {
+  configureAutoCloseUnusedTabsAlarm().catch((error) => {
+    console.error("Auto close unused tabs alarm setup failed:", error);
+  });
+
   if (details.reason === "install") {
     chrome.tabs.create({ url: chrome.runtime.getURL("options.html") });
+  }
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  configureAutoCloseUnusedTabsAlarm().catch((error) => {
+    console.error("Auto close unused tabs alarm setup failed:", error);
+  });
+});
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (
+    areaName === "local" &&
+    (changes.autoCloseUnusedTabsEnabled || changes.autoCloseUnusedTabsHours)
+  ) {
+    configureAutoCloseUnusedTabsAlarm().catch((error) => {
+      console.error("Auto close unused tabs alarm setup failed:", error);
+    });
+  }
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm?.name === AUTO_CLOSE_UNUSED_TABS_ALARM) {
+    closeUnusedTabsFromAlarm().catch((error) => {
+      console.error("Auto close unused tabs failed:", error);
+    });
   }
 });
 
@@ -64,6 +100,8 @@ async function handleRuntimeMessage(message) {
       return { ok: true, state: organizationState };
     case "run-ai-organization":
       return await organizeTabsWithAI(message.windowId);
+    case "run-auto-close-unused-tabs":
+      return await closeUnusedTabsFromAlarm();
     case "run-tab-search":
       await openTabSearch();
       return { ok: true };
@@ -172,6 +210,7 @@ async function organizeTabsWithAI(windowId) {
 
     const windowTabs = await chrome.tabs.query(windowId ? { windowId } : { currentWindow: true });
     const candidateTabs = getCandidateTabs(windowTabs);
+    const existingGroups = await readExistingTabGroups(candidateTabs);
     pushLog(t(locale, "backgroundLogReadTabs", { count: candidateTabs.length }), locale);
 
     if (candidateTabs.length < 2) {
@@ -186,7 +225,7 @@ async function organizeTabsWithAI(windowId) {
       detail: t(locale, "backgroundRequestAIDetail", { host: new URL(settings.endpoint).hostname })
     });
 
-    const rawPlan = await requestAIOrganizationPlan(candidateTabs, settings);
+    const rawPlan = await requestAIOrganizationPlan(candidateTabs, settings, existingGroups);
     pushLog(t(locale, "backgroundLogAIPlanReady"), locale);
 
     updateState({
@@ -347,11 +386,11 @@ async function applyBatchAction(message) {
   return { ok: false, error: t(uiLanguage, "backgroundUnsupportedAction") };
 }
 
-async function requestAIOrganizationPlan(tabs, settings) {
+async function requestAIOrganizationPlan(tabs, settings, existingGroups = []) {
   const payload = await requestJSONFromAI(
     settings,
-    "You organize browser tabs. Return strict JSON only. Every tab id must appear exactly once, either in groups[].tabIds or ungroupedTabIds. Prefer 2-6 groups. Use concise group names. Valid colors: grey, blue, red, yellow, green, pink, purple, cyan, orange.",
-    buildOrganizationPrompt(tabs, settings.preference)
+    "You organize browser tabs. Return strict JSON only. Every tab id must appear exactly once, either in groups[].tabIds or ungroupedTabIds. Prefer 2-6 groups. Use concise group names. Valid colors: grey, blue, red, yellow, green, pink, purple, cyan, orange. If existingGroups are provided, treat the task as incremental cleanup: preserve existing group themes, names, colors, and membership when they are reasonable; place new or loose tabs into the closest existing group; only rename, split, merge, or rebuild groups when the current grouping is clearly wrong, duplicated, or too mixed.",
+    buildOrganizationPrompt(tabs, settings.preference, existingGroups)
   );
 
   return payload;
@@ -464,7 +503,9 @@ async function requestJSONFromAI(settings, systemPrompt, userPrompt) {
   return parseJsonFromText(content, locale);
 }
 
-function buildOrganizationPrompt(tabs, preference) {
+function buildOrganizationPrompt(tabs, preference, existingGroups = []) {
+  const hasExistingGroups = Array.isArray(existingGroups) && existingGroups.length > 0;
+
   return JSON.stringify(
     {
       task: "Sort and group tabs from the current browser window.",
@@ -482,12 +523,37 @@ function buildOrganizationPrompt(tabs, preference) {
         ],
         ungroupedTabIds: ["number"]
       },
+      mode: hasExistingGroups ? "incremental_cleanup_with_existing_groups" : "fresh_organization",
+      existingGroups: hasExistingGroups
+        ? existingGroups.map((group) => ({
+            id: group.id,
+            name: group.title,
+            color: group.color,
+            collapsed: group.collapsed,
+            tabIds: group.tabIds,
+            tabs: group.tabs.map((tab) => ({
+              id: tab.id,
+              title: tab.title || "Untitled",
+              url: tab.url || "",
+              domain: safeGetDomain(tab.url)
+            }))
+          }))
+        : [],
+      constraints: [
+        "Prefer stable, incremental changes over a complete reclassification.",
+        "When an existing group has a coherent theme, keep its name and color.",
+        "Add related ungrouped tabs to existing groups instead of creating new groups with overlapping meaning.",
+        "Do not move tabs out of an existing group unless they clearly do not belong there.",
+        "Only create a new group when no existing group is a good semantic fit.",
+        "Only merge, split, or rename existing groups when that substantially improves a messy or duplicated grouping."
+      ],
       tabs: tabs.map((tab) => ({
         id: tab.id,
         title: tab.title || "Untitled",
         url: tab.url || "",
         domain: safeGetDomain(tab.url),
         index: tab.index,
+        currentGroupId: typeof tab.groupId === "number" && tab.groupId !== -1 ? tab.groupId : null,
         active: Boolean(tab.active),
         audible: Boolean(tab.audible)
       }))
@@ -495,6 +561,24 @@ function buildOrganizationPrompt(tabs, preference) {
     null,
     2
   );
+}
+
+async function readExistingTabGroups(candidateTabs) {
+  const groupIds = [
+    ...new Set(
+      candidateTabs
+        .map((tab) => tab.groupId)
+        .filter((groupId) => typeof groupId === "number" && groupId !== -1)
+    )
+  ];
+
+  if (groupIds.length === 0 || !chrome.tabGroups?.get) {
+    return [];
+  }
+
+  const results = await Promise.allSettled(groupIds.map((groupId) => chrome.tabGroups.get(groupId)));
+  const tabGroups = results.filter((result) => result.status === "fulfilled").map((result) => result.value);
+  return buildExistingTabGroupContext(candidateTabs, tabGroups);
 }
 
 
@@ -544,10 +628,62 @@ async function getAISettings() {
     "aiModel",
     "aiPreference",
     "experimentalTitleRewriteEnabled",
+    "autoCloseUnusedTabsEnabled",
+    "autoCloseUnusedTabsHours",
     i18n.UI_LANGUAGE_STORAGE_KEY
   ]);
 
   return resolveBackgroundAISettings(stored);
+}
+
+async function getAutoCloseUnusedTabsSettings() {
+  const stored = await chrome.storage.local.get([
+    "autoCloseUnusedTabsEnabled",
+    "autoCloseUnusedTabsHours"
+  ]);
+
+  return normalizeAutoCloseUnusedTabsSettings(stored);
+}
+
+async function configureAutoCloseUnusedTabsAlarm() {
+  if (!chrome.alarms?.create || !chrome.alarms?.clear) {
+    return;
+  }
+
+  const settings = await getAutoCloseUnusedTabsSettings();
+
+  if (!settings.enabled) {
+    await chrome.alarms.clear(AUTO_CLOSE_UNUSED_TABS_ALARM);
+    return;
+  }
+
+  await chrome.alarms.create(AUTO_CLOSE_UNUSED_TABS_ALARM, {
+    delayInMinutes: 1,
+    periodInMinutes: AUTO_CLOSE_CHECK_PERIOD_MINUTES
+  });
+}
+
+async function closeUnusedTabsFromAlarm() {
+  const settings = await getAutoCloseUnusedTabsSettings();
+  const { uiLanguage } = await getAISettings();
+
+  if (!settings.enabled) {
+    await chrome.alarms.clear(AUTO_CLOSE_UNUSED_TABS_ALARM);
+    return { ok: false, error: t(uiLanguage, "autoCloseUnusedTabsDisabled") };
+  }
+
+  const tabs = await chrome.tabs.query({});
+  const tabIds = getAutoCloseUnusedTabIds(tabs, Date.now(), settings.thresholdHours);
+
+  if (tabIds.length > 0) {
+    await chrome.tabs.remove(tabIds);
+  }
+
+  return {
+    ok: true,
+    closedCount: tabIds.length,
+    summary: t(uiLanguage, "autoCloseUnusedTabsTestDone", { count: tabIds.length })
+  };
 }
 
 async function getSearchableTabs() {

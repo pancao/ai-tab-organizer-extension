@@ -8,7 +8,7 @@ if (!aiProviderConfig) {
   throw new Error("AIProviderConfig is unavailable.");
 }
 
-const { DEFAULT_AI_ENDPOINT, DEFAULT_AI_MODEL, normalizeAIEndpoint } = aiProviderConfig;
+const { DEFAULT_AI_ENDPOINT, DEFAULT_AI_MODEL, normalizeAIEndpoint, normalizeAutoCloseUnusedTabsHours } = aiProviderConfig;
 
 export function resolveBackgroundAISettings(stored) {
   const source = stored || {};
@@ -19,6 +19,8 @@ export function resolveBackgroundAISettings(stored) {
     model: source.aiModel || DEFAULT_AI_MODEL,
     preference: source.aiPreference || "",
     experimentalTitleRewriteEnabled: Boolean(source.experimentalTitleRewriteEnabled),
+    autoCloseUnusedTabsEnabled: Boolean(source.autoCloseUnusedTabsEnabled),
+    autoCloseUnusedTabsHours: normalizeAutoCloseUnusedTabsHours(source.autoCloseUnusedTabsHours),
     uiLanguage: i18n?.resolveUILanguage ? i18n.resolveUILanguage(source[i18n.UI_LANGUAGE_STORAGE_KEY]) : "cn"
   };
 }
