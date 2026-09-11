@@ -110,6 +110,15 @@ async function handleRuntimeMessage(message) {
       return { ok: true };
     case "get-tabs":
       return { ok: true, tabs: await getSearchableTabs() };
+    case "search-history":
+      return {
+        ok: true,
+        items: await chrome.history.search({
+          text: String(message.query || "").trim(),
+          startTime: 0,
+          maxResults: 100
+        })
+      };
     case "activate-tab":
       await activateTab(message.tabId);
       return { ok: true };

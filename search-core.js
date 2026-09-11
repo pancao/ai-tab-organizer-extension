@@ -114,6 +114,53 @@
     }));
   }
 
+  function parseHistoryQuery(value) {
+    const match = /^history +([\s\S]*)$/i.exec(String(value || ""));
+    return match ? match[1] : null;
+  }
+
+  function buildHistoryEntries(items) {
+    return (Array.isArray(items) ? items : [])
+      .filter((item) => /^https?:\/\//i.test(item.url || ""))
+      .sort((left, right) => (right.lastVisitTime || 0) - (left.lastVisitTime || 0))
+      .map((item) => ({
+        id: `history-${item.id || item.url}`,
+        kind: "history",
+        url: item.url,
+        title: item.title || item.url,
+        subtitle: item.url
+      }));
+  }
+
+  // Invalidate requests immediately, including while the next query is debouncing.
+  function createHistorySearch({ search, onChange, delay = 150 }) {
+    let revision = 0;
+    let timer;
+    function cancel() {
+      revision += 1;
+      clearTimeout(timer);
+    }
+    return {
+      cancel,
+      run(query) {
+        cancel();
+        const request = revision;
+        onChange({ loading: true, entries: [], error: null });
+        timer = setTimeout(async () => {
+          try {
+            const response = await search(String(query || "").trim());
+            if (request !== revision) return;
+            if (!response?.ok) throw new Error(response?.error || "");
+            onChange({ loading: false, entries: buildHistoryEntries(response.items), error: null });
+          } catch (error) {
+            if (request !== revision) return;
+            onChange({ loading: false, entries: [], error: error?.message || "historySearchFailed" });
+          }
+        }, delay);
+      }
+    };
+  }
+
   function defaultActionForEntry(entry) {
     return entry.kind === "tab" ? "open" : "run";
   }
@@ -262,6 +309,9 @@
     buildEntries,
     buildFallbackTarget,
     buildNaturalEntries,
+    buildHistoryEntries,
+    createHistorySearch,
+    parseHistoryQuery,
     cycleAction,
     defaultActionForEntry,
     filterTabs,

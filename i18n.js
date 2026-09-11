@@ -22,6 +22,12 @@
 
   const MESSAGES = Object.freeze({
     en: {
+      historyMode: "History",
+      exitHistoryMode: "Exit history search",
+      historyInputPlaceholder: "Search history",
+      historyLoading: "Searching history…",
+      historyNoMatch: "No matching history",
+      historySearchFailed: "Could not search history",
       settings: "Settings",
       shortcutKeys: "Keyboard Shortcuts",
       organizeTabs: "Organize Tabs",
@@ -155,6 +161,12 @@
       providerApiKeyPlaceholder: "Enter {provider} API Key"
     },
     cn: {
+      historyMode: "历史记录",
+      exitHistoryMode: "退出历史记录搜索",
+      historyInputPlaceholder: "搜索历史记录",
+      historyLoading: "正在搜索历史记录…",
+      historyNoMatch: "没有匹配的历史记录",
+      historySearchFailed: "历史记录搜索失败",
       settings: "设置",
       shortcutKeys: "快捷键",
       organizeTabs: "整理标签页",
@@ -284,6 +296,12 @@
       providerApiKeyPlaceholder: "填写 {provider} API Key"
     },
     "cn-t": {
+      historyMode: "歷史記錄",
+      exitHistoryMode: "退出歷史記錄搜尋",
+      historyInputPlaceholder: "搜尋歷史記錄",
+      historyLoading: "正在搜尋歷史記錄…",
+      historyNoMatch: "沒有符合的歷史記錄",
+      historySearchFailed: "歷史記錄搜尋失敗",
       settings: "設定",
       shortcutKeys: "快捷鍵",
       organizeTabs: "整理分頁",
@@ -413,6 +431,12 @@
       providerApiKeyPlaceholder: "填寫 {provider} API Key"
     },
     jp: {
+      historyMode: "履歴",
+      exitHistoryMode: "履歴検索を終了",
+      historyInputPlaceholder: "履歴を検索",
+      historyLoading: "履歴を検索中…",
+      historyNoMatch: "一致する履歴がありません",
+      historySearchFailed: "履歴を検索できませんでした",
       settings: "設定",
       shortcutKeys: "ショートカット",
       organizeTabs: "タブを整理",
@@ -545,6 +569,12 @@
       providerApiKeyPlaceholder: "{provider} API Key を入力"
     },
     espanol: {
+      historyMode: "Historial",
+      exitHistoryMode: "Salir de la búsqueda del historial",
+      historyInputPlaceholder: "Buscar en el historial",
+      historyLoading: "Buscando en el historial…",
+      historyNoMatch: "No hay historial coincidente",
+      historySearchFailed: "No se pudo buscar en el historial",
       settings: "Configuracion",
       shortcutKeys: "Atajos",
       organizeTabs: "Organizar pestañas",

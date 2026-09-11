@@ -8,6 +8,12 @@ const i18n = globalThis.AITabI18n || {
   },
   t(_locale, key) {
     const fallback = {
+      historyMode: "历史记录",
+      exitHistoryMode: "退出历史记录搜索",
+      historyInputPlaceholder: "搜索历史记录",
+      historyLoading: "正在搜索历史记录…",
+      historyNoMatch: "没有匹配的历史记录",
+      historySearchFailed: "历史记录搜索失败",
       searchInputPlaceholder: "通过关键词、网址、或一句话搜索标签",
       closeAllAndBookmark: "关闭全部并收藏",
       closeAll: "关闭所有",
@@ -56,6 +62,8 @@ const {
   SEARCH_ACTIONS,
   buildEntries,
   buildNaturalEntries,
+  createHistorySearch,
+  parseHistoryQuery,
   cycleAction,
   defaultActionForEntry,
   normalizeIndex,
@@ -154,6 +162,18 @@ async function openTabSearch(prefetchedTabs) {
   let searchMode = "default";
   let naturalPreview = null;
   let isNaturalLoading = false;
+  let naturalRequestId = 0;
+  let historyState = { loading: false, entries: [], error: null };
+  const historySearch = createHistorySearch({
+    search: (query) => chrome.runtime.sendMessage({ type: "search-history", query }),
+    onChange(state) {
+      historyState = state;
+      selectedIndex = state.entries.length ? 0 : -1;
+      selectedAction = null;
+      hoveredIndex = null;
+      rebuildRows();
+    }
+  });
 
   let t = theme.tokens;
 
@@ -217,6 +237,24 @@ async function openTabSearch(prefetchedTabs) {
     alignItems: "center"
   });
 
+  const historyBadge = document.createElement("button");
+  historyBadge.type = "button";
+  historyBadge.textContent = `${i18n.t(currentLocale, "historyMode")} ×`;
+  historyBadge.setAttribute("aria-label", i18n.t(currentLocale, "exitHistoryMode"));
+  setStyles(historyBadge, {
+    display: "none",
+    flex: "0 0 auto",
+    border: "0",
+    borderRadius: "999px",
+    padding: "8px 10px",
+    fontSize: "13px",
+    fontWeight: "600",
+    background: t.commandBg,
+    color: t.commandText,
+    cursor: "pointer"
+  });
+  historyBadge.addEventListener("click", exitHistoryMode);
+
   const input = document.createElement("input");
   input.type = "text";
   input.placeholder = i18n.t(currentLocale, "searchInputPlaceholder");
@@ -267,6 +305,7 @@ async function openTabSearch(prefetchedTabs) {
     input.focus();
   });
 
+  inputWrapper.appendChild(historyBadge);
   inputWrapper.appendChild(input);
   inputWrapper.appendChild(clearButton);
 
@@ -337,7 +376,11 @@ async function openTabSearch(prefetchedTabs) {
   overlay.appendChild(panel);
   document.documentElement.appendChild(overlay);
 
-  const close = () => overlay.remove();
+  const close = () => {
+    historySearch.cancel();
+    naturalRequestId += 1;
+    overlay.remove();
+  };
 
   list.addEventListener("mouseleave", () => {
     hoveredIndex = null;
@@ -346,26 +389,61 @@ async function openTabSearch(prefetchedTabs) {
     updateInteractiveState();
   });
 
-  input.addEventListener("input", () => {
+  function updateSearchMode() {
+    const isHistory = searchMode === "history";
+    historyBadge.style.display = isHistory ? "inline-flex" : "none";
+    input.placeholder = i18n.t(currentLocale, isHistory ? "historyInputPlaceholder" : "searchInputPlaceholder");
+    input.setAttribute("aria-label", input.placeholder);
     clearButton.style.display = input.value ? "flex" : "none";
+  }
 
+  function exitHistoryMode() {
+    historySearch.cancel();
     searchMode = "default";
+    handleSearchInput({ detectHistory: false });
+    input.focus();
+  }
+
+  input.addEventListener("input", handleSearchInput);
+
+  function handleSearchInput({ detectHistory = true } = {}) {
+    naturalRequestId += 1;
+    isNaturalLoading = false;
+    const historyQuery = searchMode === "history" || !detectHistory ? null : parseHistoryQuery(input.value);
+    if (historyQuery !== null) {
+      searchMode = "history";
+      input.value = historyQuery;
+    } else if (searchMode !== "history") {
+      searchMode = "default";
+    }
     naturalPreview = null;
     headerFocusIndex = -1;
     footerFocusIndex = -1;
     selectedIndex = -1;
     selectedAction = null;
     hoveredIndex = null;
+    updateSearchMode();
 
+    if (searchMode === "history") {
+      historySearch.run(input.value);
+      return;
+    }
+    historySearch.cancel();
     rebuildRows();
-
     if (input.value.trim() && entries.length > 0) {
       selectedIndex = 0;
       updateInteractiveState();
     }
-  });
+  }
 
   input.addEventListener("keydown", async (event) => {
+    if (searchMode === "history" && (event.key === "Escape" || (event.key === "Backspace" && !input.value))) {
+      event.preventDefault();
+      event.stopPropagation();
+      exitHistoryMode();
+      return;
+    }
+
     const totalItems = entries.length;
     const activeEntry = entries[selectedIndex];
     const hasActiveTabEntry = supportsActions(activeEntry);
@@ -373,6 +451,8 @@ async function openTabSearch(prefetchedTabs) {
     if (event.key === "Escape") {
       if (searchMode === "natural") {
         searchMode = "default";
+        naturalRequestId += 1;
+        isNaturalLoading = false;
         naturalPreview = null;
         headerFocusIndex = -1;
         footerFocusIndex = -1;
@@ -558,13 +638,17 @@ async function openTabSearch(prefetchedTabs) {
   });
 
   function rebuildRows() {
-    if (isNaturalLoading) {
+    if (isNaturalLoading || (searchMode === "history" && historyState.loading)) {
       renderFooter();
       renderLoadingState();
       return;
     }
 
-    entries = searchMode === "natural" && naturalPreview ? buildNaturalEntries(naturalPreview) : buildEntries(tabs, input.value.trim(), currentLocale);
+    entries = searchMode === "history"
+      ? historyState.entries
+      : searchMode === "natural" && naturalPreview
+        ? buildNaturalEntries(naturalPreview)
+        : buildEntries(tabs, input.value.trim(), currentLocale);
     selectedIndex = normalizeIndex(selectedIndex, entries);
 
     if (!supportsActions(entries[selectedIndex])) {
@@ -577,7 +661,10 @@ async function openTabSearch(prefetchedTabs) {
 
     if (entries.length === 0) {
       const empty = document.createElement("div");
-      empty.textContent = searchMode === "natural" ? i18n.t(currentLocale, "naturalNoMatch") : i18n.t(currentLocale, "noMatchedTabs");
+      empty.textContent = searchMode === "history"
+        ? (historyState.error ? i18n.t(currentLocale, "historySearchFailed") : i18n.t(currentLocale, "historyNoMatch"))
+        : i18n.t(currentLocale, searchMode === "natural" ? "naturalNoMatch" : "noMatchedTabs");
+      if (searchMode === "history" && historyState.error) empty.setAttribute("role", "alert");
       setStyles(empty, {
         padding: "12px 14px 16px",
         flex: "0 0 auto",
@@ -627,7 +714,7 @@ async function openTabSearch(prefetchedTabs) {
     });
 
     const label = document.createElement("div");
-    label.textContent = i18n.t(currentLocale, "naturalLoading");
+    label.textContent = i18n.t(currentLocale, searchMode === "history" ? "historyLoading" : "naturalLoading");
 
     loading.appendChild(spinner);
     loading.appendChild(label);
@@ -903,7 +990,7 @@ async function openTabSearch(prefetchedTabs) {
       return;
     }
 
-    if (entry.kind === "url") {
+    if (entry.kind === "url" || entry.kind === "history") {
       const response = await chrome.runtime.sendMessage({ type: "open-url", url: entry.url });
 
       if (!response?.ok) {
@@ -954,6 +1041,7 @@ async function openTabSearch(prefetchedTabs) {
       return;
     }
 
+    const requestId = ++naturalRequestId;
     isNaturalLoading = true;
     searchMode = "natural";
     naturalPreview = null;
@@ -965,6 +1053,7 @@ async function openTabSearch(prefetchedTabs) {
     rebuildRows();
 
     const response = await chrome.runtime.sendMessage({ type: "preview-batch-tabs", query });
+    if (requestId !== naturalRequestId) return;
     isNaturalLoading = false;
 
     if (!response?.ok) {
